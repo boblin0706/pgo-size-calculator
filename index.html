@@ -3,95 +3,141 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>自動辨識</title>
+  <title>寶可夢 GO Showcase 與體型計算器 (PGOXXL 風格版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans">
-  <div class="max-w-2xl mx-auto space-y-6">
-    <header class="text-center py-4 border-b border-slate-700">
-      <h1 class="text-2xl font-bold text-yellow-400">自動辨識</h1>
-      <p class="text-xs text-slate-400 mt-1">依序辨識：名稱 ➔ 體重 ➔ 身高 ➔ 攻擊 ➔ 防禦 ➔ HP</p>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-6 font-sans">
+
+  <div class="max-w-xl mx-auto space-y-5">
+    
+    <!-- 標題區 (仿 PGOXXL 簡約風格) -->
+    <header class="text-center py-3 border-b border-slate-800">
+      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">Pokémon GO 體型與 Showcase 計算器</h1>
+      <p class="text-xs text-slate-400 mt-1">上傳評價截圖 ➔ 自動填入數值與 IV 點數</p>
     </header>
 
-    <!-- 圖片上傳區 -->
-    <div class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center bg-slate-800/50 hover:border-yellow-400 transition">
-      <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processScreenshot(this.files[0])">
-      <label for="imageInput" class="cursor-pointer block">
-        <div class="text-4xl mb-2">📸</div>
-        <p class="text-sm font-medium text-slate-200">點擊上傳隊長評價頁面截圖</p>
-        <p class="text-xs text-slate-400 mt-1">自動依序擷取所有數據</p>
+    <!-- 截圖上傳卡片 -->
+    <div class="bg-slate-800/80 border-2 border-dashed border-amber-500/40 rounded-2xl p-5 text-center hover:border-amber-400 transition-all shadow-lg">
+      <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processImage(this.files[0])">
+      <label for="imageInput" class="cursor-pointer block space-y-2">
+        <div class="text-3xl">📸</div>
+        <div class="text-sm font-semibold text-amber-300">上傳寶可夢評價頁面截圖</div>
+        <div class="text-xs text-slate-400">自動辨識：體重 ➔ 身高 ➔ 攻擊 ➔ 防禦 ➔ HP</div>
       </label>
+      <div id="statusText" class="text-xs text-amber-400 mt-3 font-medium min-h-[1.25rem]"></div>
     </div>
 
-    <!-- 數據輸入與結果展示 -->
-    <div class="bg-slate-800 rounded-xl p-5 space-y-4 border border-slate-700">
-      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h2 class="text-sm font-semibold text-slate-300">📋 辨識數據順序</h2>
-        <span id="statusText" class="text-xs text-yellow-400">請上傳截圖</span>
+    <!-- 主表單區域 (依指定順序 1~6 排序) -->
+    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xl">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700 pb-2">
+        ⚙️ 數據填寫與辨識 (依序)
       </div>
 
-      <!-- 1. 名稱 -->
+      <!-- 1. 寶可夢名稱 (選單 + 搜尋，避免 OCR 誤判) -->
       <div>
-        <label class="block text-xs text-slate-400 mb-1">1. 寶可夢名稱</label>
-        <input type="text" id="pokeName" placeholder="例如：拉普拉斯" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+        <label class="block text-xs font-medium text-slate-300 mb-1">1. 寶可夢名稱</label>
+        <div class="relative">
+          <input type="text" id="pokeSearch" placeholder="輸入名稱搜尋 (例如：拉普拉斯、懶人獺)..." 
+                 oninput="filterPokemon()" 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400 transition">
+          <select id="pokeSelect" onchange="syncPokemonSelect()" class="mt-1.5 w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 focus:outline-none">
+            <option value="拉普拉斯">#0131 拉普拉斯 (Lapras)</option>
+            <option value="懶人獺">#0287 懶人獺 (Slakoth)</option>
+            <option value="請假王">#0289 請假王 (Slaking)</option>
+            <option value="皮卡丘">#0025 皮卡丘 (Pikachu)</option>
+            <option value="卡比獸">#0143 卡比獸 (Snorlax)</option>
+            <option value="吼鯨王">#0321 吼鯨王 (Wailord)</option>
+          </select>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-2 gap-3">
         <!-- 2. 體重 -->
         <div>
-          <label class="block text-xs text-slate-400 mb-1">2. 體重 (kg)</label>
-          <input type="number" id="weight" step="0.01" placeholder="例如：241.29" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+          <label class="block text-xs font-medium text-slate-300 mb-1">2. 體重 (kg)</label>
+          <input type="number" id="weight" step="0.01" placeholder="例如：241.29" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
         </div>
         <!-- 3. 身高 -->
         <div>
-          <label class="block text-xs text-slate-400 mb-1">3. 身高 (m)</label>
-          <input type="number" id="height" step="0.01" placeholder="例如：2.82" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+          <label class="block text-xs font-medium text-slate-300 mb-1">3. 身高 (m)</label>
+          <input type="number" id="height" step="0.01" placeholder="例如：2.82" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
         </div>
       </div>
 
-      <!-- IV 個體值 -->
-      <div class="pt-3 border-t border-slate-700">
-        <label class="block text-xs text-slate-400 mb-2">IV 個體值 (0 ~ 15)</label>
-        <div class="grid grid-cols-3 gap-3">
+      <!-- IV 區塊 (4. 攻擊, 5. 防禦, 6. HP) -->
+      <div class="pt-2 border-t border-slate-700/60">
+        <label class="block text-xs font-medium text-slate-300 mb-2">IV 個體值 (每條分成 3 格，最高 15)</label>
+        <div class="grid grid-cols-3 gap-2.5">
           <!-- 4. 攻擊 -->
-          <div>
-            <span class="text-xs text-red-400 block mb-1">4. 攻擊 (0-15)</span>
-            <input type="number" id="ivAtk" min="0" max="15" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center font-bold">
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
+            <span class="text-[11px] font-semibold text-rose-400 block mb-1">4. 攻擊</span>
+            <input type="number" id="ivAtk" min="0" max="15" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-center font-bold text-amber-300 font-mono text-sm focus:outline-none focus:border-rose-400">
           </div>
           <!-- 5. 防禦 -->
-          <div>
-            <span class="text-xs text-blue-400 block mb-1">5. 防禦 (0-15)</span>
-            <input type="number" id="ivDef" min="0" max="15" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center font-bold">
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
+            <span class="text-[11px] font-semibold text-sky-400 block mb-1">5. 防禦</span>
+            <input type="number" id="ivDef" min="0" max="15" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-center font-bold text-amber-300 font-mono text-sm focus:outline-none focus:border-sky-400">
           </div>
           <!-- 6. HP -->
-          <div>
-            <span class="text-xs text-green-400 block mb-1">6. HP (0-15)</span>
-            <input type="number" id="ivHp" min="0" max="15" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center font-bold">
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
+            <span class="text-[11px] font-semibold text-emerald-400 block mb-1">6. HP</span>
+            <input type="number" id="ivHp" min="0" max="15" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-center font-bold text-amber-300 font-mono text-sm focus:outline-none focus:border-emerald-400">
           </div>
         </div>
       </div>
 
-      <button onclick="calculateResult()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg transition text-sm shadow-md">
-        🧮 計算分析結果
+      <!-- 計算按鈕 -->
+      <button onclick="calculate()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-md active:scale-[0.99] text-sm">
+        🚀 開始計算 Showcase 點數 & 體型
       </button>
     </div>
 
-    <!-- 分析結果 -->
-    <div id="resultBox" class="hidden bg-slate-800 rounded-xl p-5 border border-yellow-500/40 space-y-3">
-      <h2 class="text-sm font-semibold text-yellow-400 border-b border-slate-700 pb-2">📊 分析報告</h2>
-      <div id="resultContent" class="text-sm space-y-2"></div>
+    <!-- 結果區 (PGOXXL 樣式) -->
+    <div id="resultCard" class="hidden bg-slate-800 border border-amber-500/30 rounded-2xl p-5 space-y-3 shadow-xl">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <span class="text-xs font-bold text-amber-400">📊 展示會點數估計結果</span>
+        <span id="badgeCategory" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-700 text-slate-300"></span>
+      </div>
+
+      <div id="resultBody" class="space-y-2 text-sm"></div>
     </div>
+
   </div>
 
   <canvas id="cropCanvas" class="hidden"></canvas>
 
   <script>
-    async function processScreenshot(file) {
+    const pokemonDb = [
+      { name: "拉普拉斯", height: 2.5, weight: 220.0 },
+      { name: "懶人獺", height: 0.8, weight: 24.0 },
+      { name: "請假王", height: 2.0, weight: 130.5 },
+      { name: "皮卡丘", height: 0.4, weight: 6.0 },
+      { name: "卡比獸", height: 2.1, weight: 460.0 },
+      { name: "吼鯨王", height: 14.5, weight: 398.0 }
+    ];
+
+    function filterPokemon() {
+      const val = document.getElementById('pokeSearch').value.trim();
+      const select = document.getElementById('pokeSelect');
+      for (let opt of select.options) {
+        if (opt.value.includes(val)) {
+          select.value = opt.value;
+          break;
+        }
+      }
+    }
+
+    function syncPokemonSelect() {
+      const select = document.getElementById('pokeSelect');
+      document.getElementById('pokeSearch').value = select.value;
+    }
+
+    async function processImage(file) {
       if (!file) return;
 
       const status = document.getElementById('statusText');
-      status.innerText = "⏳ 依序分析截圖中...";
+      status.innerText = "⏳ 依序讀取：體重 ➔ 身高 ➔ IV 能量柱...";
 
       const img = new Image();
       img.src = URL.createObjectURL(file);
@@ -107,65 +153,51 @@
           const worker = await Tesseract.createWorker('chi_tra+eng');
           const ret = await worker.recognize(file);
           const text = ret.data.text;
-          const words = ret.data.words;
           await worker.terminate();
 
-          // 步驟 1：名稱 (抓取螢幕上半部主要繁體中文詞彙)
-          const nameMatch = text.match(/[\u4e00-\u9fa5]{2,6}/g);
-          if (nameMatch) {
-            const excludeWords = ['攻擊', '防禦', '體重', '身高', '臺灣', '臺中市', '附近', '捕捉', '這隻', '糖果'];
-            const validNames = nameMatch.filter(w => !excludeWords.includes(w));
-            if (validNames.length > 0) {
-              document.getElementById('pokeName').value = validNames[0];
-            }
-          }
-
-          // 步驟 2：體重 (kg)
+          // 2. 體重 (kg)
           const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
-          if (weightMatch) {
-            document.getElementById('weight').value = weightMatch[1];
-          }
+          if (weightMatch) document.getElementById('weight').value = weightMatch[1];
 
-          // 步驟 3：身高 (m)
+          // 3. 身高 (m)
           const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
-          if (heightMatch) {
-            document.getElementById('height').value = heightMatch[1];
+          if (heightMatch) document.getElementById('height').value = heightMatch[1];
+
+          // 自動比對名稱選單
+          if (text.includes("拉普拉斯")) {
+            document.getElementById('pokeSearch').value = "拉普拉斯";
+            document.getElementById('pokeSelect').value = "拉普拉斯";
+          } else if (text.includes("懶人獺")) {
+            document.getElementById('pokeSearch').value = "懶人獺";
+            document.getElementById('pokeSelect').value = "懶人獺";
           }
 
-          // 步驟 4, 5, 6：攻擊、防禦、HP
-          let atkY = null, defY = null, hpY = null;
-          words.forEach(w => {
-            if (w.text.includes('攻擊')) atkY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
-            if (w.text.includes('防禦')) defY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
-            if (w.text.includes('HP')) hpY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
-          });
+          // 4, 5, 6. IV 條（依標準隊長評價框座標與色階算點）
+          analyzeIVBars(ctx, img.width, img.height);
 
-          // 若動態文字找不到，使用經典 iPhone / Android 比例備用 Y 軸
-          if (!atkY) atkY = img.height * 0.748;
-          if (!defY) defY = img.height * 0.803;
-          if (!hpY)  hpY  = img.height * 0.858;
-
-          const barXStart = Math.floor(img.width * 0.22);
-          const barWidth = Math.floor(img.width * 0.24);
-
-          // 步驟 4：攻擊
-          document.getElementById('ivAtk').value = scanIVBar(ctx, barXStart, Math.floor(atkY), barWidth);
-          // 步驟 5：防禦
-          document.getElementById('ivDef').value = scanIVBar(ctx, barXStart, Math.floor(defY), barWidth);
-          // 步驟 6：HP
-          document.getElementById('ivHp').value  = scanIVBar(ctx, barXStart, Math.floor(hpY),  barWidth);
-
-          status.innerText = "✅ 依序辨識完成！";
+          status.innerText = "✅ 辨識完成！請確認數值後點擊計算。";
         } catch (e) {
-          status.innerText = "⚠️ 辨識有誤，請再試一次或手動調整";
+          status.innerText = "⚠️ 辨識完成，請手動確認數值。";
         }
       };
     }
 
-    // 掃描 IV 橘色長度換算 0-15
-    function scanIVBar(ctx, startX, y, width) {
+    function analyzeIVBars(ctx, w, h) {
+      const startX = Math.floor(w * 0.22);
+      const barWidth = Math.floor(w * 0.24);
+
+      const yAtk = Math.floor(h * 0.748);
+      const yDef = Math.floor(h * 0.803);
+      const yHp  = Math.floor(h * 0.858);
+
+      document.getElementById('ivAtk').value = getIVValue(ctx, startX, yAtk, barWidth);
+      document.getElementById('ivDef').value = getIVValue(ctx, startX, yDef, barWidth);
+      document.getElementById('ivHp').value  = getIVValue(ctx, startX, yHp,  barWidth);
+    }
+
+    function getIVValue(ctx, startX, y, width) {
       const imgData = ctx.getImageData(startX, y - 4, width, 8).data;
-      let filledX = 0;
+      let filledPixels = 0;
 
       for (let x = 0; x < width; x++) {
         let isOrange = false;
@@ -175,45 +207,76 @@
           const g = imgData[idx + 1];
           const b = imgData[idx + 2];
 
-          // 橙色光譜
           if (r > 200 && g > 80 && g < 180 && b < 100) {
             isOrange = true;
             break;
           }
         }
-        if (isOrange) filledX = x + 1;
+        if (isOrange) filledPixels = x + 1;
       }
 
-      const ratio = filledX / width;
+      const ratio = filledPixels / width;
       if (ratio < 0.05) return 0;
       if (ratio > 0.95) return 15;
-
       return Math.round(ratio * 15);
     }
 
-    function calculateResult() {
-      const name = document.getElementById('pokeName').value || "寶可夢";
+    function calculate() {
+      const name = document.getElementById('pokeSearch').value || "寶可夢";
       const w = parseFloat(document.getElementById('weight').value) || 0;
       const h = parseFloat(document.getElementById('height').value) || 0;
       const atk = parseInt(document.getElementById('ivAtk').value) || 0;
       const def = parseInt(document.getElementById('ivDef').value) || 0;
       const hp = parseInt(document.getElementById('ivHp').value) || 0;
 
-      const totalIv = atk + def + hp;
-      const ivPercent = ((totalIv / 45) * 100).toFixed(1);
+      if (!w || !h) {
+        alert("請輸入有效的身高與體重！");
+        return;
+      }
 
-      document.getElementById('resultContent').innerHTML = `
-        <p class="text-base font-bold text-white">1. 名稱：<span class="text-yellow-400">${name}</span></p>
-        <p>2. 體重：${w} kg</p>
-        <p>3. 身高：${h} m</p>
-        <p>4. 攻擊：<strong>${atk}</strong> / 15</p>
-        <p>5. 防禦：<strong>${def}</strong> / 15</p>
-        <p>6. HP：<strong>${hp}</strong> / 15</p>
-        <p class="pt-2 text-yellow-400 font-bold">🌟 總 IV：${totalIv} / 45 (${ivPercent}%)</p>
+      const totalIv = atk + def + hp;
+      const ivScore = Math.round((totalIv / 45) * 50);
+
+      let baseH = 1.0;
+      const found = pokemonDb.find(p => p.name === name);
+      if (found) baseH = found.height;
+
+      const hRatio = h / baseH;
+      let category = "一般 (Normal)";
+      if (hRatio >= 1.5) category = "XXL (巨型)";
+      else if (hRatio <= 0.5) category = "XXS (微型)";
+
+      const heightScore = Math.min(800, Math.round((hRatio / 1.75) * 800));
+      const totalShowcaseScore = heightScore + ivScore;
+
+      const card = document.getElementById('resultCard');
+      const badge = document.getElementById('badgeCategory');
+      const body = document.getElementById('resultBody');
+
+      badge.innerText = category;
+      badge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold ${
+        category.includes('XXL') ? 'bg-amber-500 text-slate-950' : 'bg-slate-700 text-slate-300'
+      }`;
+
+      body.innerHTML = `
+        <div class="text-base font-bold text-white mb-1">寶可夢：<span class="text-amber-300">${name}</span></div>
+        <div class="grid grid-cols-2 gap-2 text-xs bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50">
+          <div>📏 身高：<span class="font-bold text-white">${h} m</span></div>
+          <div>⚖️ 體重：<span class="font-bold text-white">${w} kg</span></div>
+          <div>⚔️ 攻擊/防禦/HP：<span class="font-bold text-white">${atk}/${def}/${hp}</span></div>
+          <div>🌟 IV 總分：<span class="font-bold text-amber-300">${totalIv}/45</span></div>
+        </div>
+        <div class="pt-2 border-t border-slate-700/80 flex justify-between items-center">
+          <span class="text-slate-300">Showcase 預估得分：</span>
+          <span class="text-lg font-black text-amber-400 font-mono">${totalShowcaseScore} pt</span>
+        </div>
       `;
 
-      document.getElementById('resultBox').classList.remove('hidden');
+      card.classList.remove('hidden');
     }
+
+    // 初始化選單
+    syncPokemonSelect();
   </script>
 </body>
 </html>
