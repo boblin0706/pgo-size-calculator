@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寶可夢 GO 體型與展示會積分計算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pogo: {
+                            blue: '#0075FF',
+                            cyan: '#00F0FF',
+                            purple: '#8A2BE2',
+                            dark: '#0B0F19',
+                            card: '#161F33',
+                            border: '#233252',
+                            accent: '#FFCB05',
+                            xxl: '#FF4500',
+                            xxs: '#38BDF8'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #060911;
+            color: #f3f4f6;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 117, 255, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(138, 43, 226, 0.15) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(22, 31, 51, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel-glow {
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(11, 15, 25, 0.5);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #233252;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #0075FF;
+        }
+        .scanline {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, transparent, #00F0FF, transparent);
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+        @keyframes scanning {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { top: 95%; opacity: 0.8; }
+        }
+        .is-scanning {
+            animation: scanning 1.8s ease-in-out infinite alternate;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12 text-slate-100 selection:bg-pogo-cyan selection:text-pogo-dark">
+
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-pogo-blue to-pogo-cyan flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-lg shadow-pogo-blue/30">
+                    <i class="fa-solid font-black">GO</i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-pogo-cyan bg-clip-text text-transparent">
+                        寶可夢體型與 Showcase 計算器
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">AI 自動圖像識別 · 展示會積分分析 · 快速代入資料</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Showcase 點數演算法 v2.5
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <section class="lg:col-span-5 space-y-6">
+
+            <!-- Presets / Quick Test Buttons -->
+            <div class="glass-panel rounded-2xl p-4 border border-pogo-border">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-pogo-accent"></i> 快速測試範例寶可夢
+                </h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="loadPreset('slakoth_xxl')" class="px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-pogo-blue/20 hover:border-pogo-blue/50 border border-slate-700/60 text-xs font-medium text-slate-200 transition-all flex flex-col items-center gap-1 group">
+                        <span class="font-bold text-pogo-xxl group-hover:scale-105 transition-transform">🦥 XXL 懶人獺</span>
+                        <span class="text-[10px] text-slate-400">#0287 / 巨型</span>
+                    </button>
+                    <button onclick="loadPreset('pikachu_xxs')" class="px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-pogo-cyan/20 hover:border-pogo-cyan/50 border border-slate-700/60 text-xs font-medium text-slate-200 transition-all flex flex-col items-center gap-1 group">
+                        <span class="font-bold text-pogo-xxs group-hover:scale-105 transition-transform">⚡ XXS 皮卡丘</span>
+                        <span class="text-[10px] text-slate-400">#0025 / 迷你</span>
+                    </button>
+                    <button onclick="loadPreset('snorlax_xl')" class="px-2.5 py-2 rounded-xl bg-slate-800/80 hover:bg-pogo-purple/20 hover:border-pogo-purple/50 border border-slate-700/60 text-xs font-medium text-slate-200 transition-all flex flex-col items-center gap-1 group">
+                        <span class="font-bold text-purple-400 group-hover:scale-105 transition-transform">🐻 XL 卡比獸</span>
+                        <span class="text-[10px] text-slate-400">#0143 / 高IV</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload & Interactive OCR Box -->
+            <div class="glass-panel rounded-2xl p-5 border border-pogo-border relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-camera text-pogo-cyan"></i> 截圖辨識 (OCR) 與校正
+                    </h2>
+                    <span class="text-[11px] text-slate-400">支援拖曳/貼上截圖</span>
+                </div>
+
+                <!-- Dropzone Container -->
+                <div id="dropzone" class="relative border-2 border-dashed border-slate-700 hover:border-pogo-blue rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-900/40 group min-h-[220px] flex flex-col items-center justify-center">
+                    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                    
+                    <div id="uploadPrompt" class="space-y-2 pointer-events-none">
+                        <div class="w-12 h-12 rounded-full bg-pogo-blue/10 text-pogo-cyan flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-200">點擊上傳或將截圖拖拽至此</p>
+                        <p class="text-[11px] text-slate-500">支援 PNG, JPG, WEBP (自動解析身高體重)</p>
+                    </div>
+
+                    <!-- Image Preview & Overlay -->
+                    <div id="previewContainer" class="hidden relative w-full h-full flex flex-col items-center">
+                        <div class="relative inline-block max-h-[320px] overflow-hidden rounded-lg border border-slate-700">
+                            <img id="imagePreview" src="" alt="Pokémon Screenshot" class="max-h-[320px] w-auto object-contain">
+                            <!-- Scanning Animation Bar -->
+                            <div id="scanline" class="scanline"></div>
+                            
+                            <!-- Visual Bounding Boxes Overlays -->
+                            <div id="boxHeight" class="hidden absolute border-2 border-amber-400 bg-amber-400/20 rounded text-[10px] text-amber-300 font-mono px-1 font-bold pointer-events-none shadow-sm">身高 (m)</div>
+                            <div id="boxWeight" class="hidden absolute border-2 border-emerald-400 bg-emerald-400/20 rounded text-[10px] text-emerald-300 font-mono px-1 font-bold pointer-events-none shadow-sm">體重 (kg)</div>
+                        </div>
+
+                        <!-- Scan Status Info -->
+                        <div id="ocrStatus" class="mt-3 w-full text-xs bg-slate-900/90 py-2 px-3 rounded-lg flex items-center justify-between border border-slate-800">
+                            <span class="text-slate-300 flex items-center gap-2">
+                                <i id="ocrIcon" class="fa-solid fa-spinner fa-spin text-pogo-cyan"></i>
+                                <span id="ocrStatusText">已準備辨識...</span>
+                            </span>
+                            <button onclick="triggerFileInput()" class="text-xs text-pogo-cyan hover:underline">換一張</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-pogo-border space-y-4">
+                <h2 class="text-sm font-bold text-slate-200 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-pogo-blue"></i> 數值手動微調與測量
+                    </span>
+                    <button onclick="resetInputs()" class="text-xs text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-rotate-left"></i> 重置
+                    </button>
+                </h2>
+
+                <!-- Species Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">寶可夢物種 (Species)</label>
+                    <select id="speciesSelect" onchange="handleSpeciesChange()" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-pogo-blue transition-colors">
+                        <!-- Populated dynamically by JS -->
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Base Specs Info Card -->
+                    <div class="bg-slate-900/50 rounded-xl p-2.5 border border-slate-800/80 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] text-slate-400">標準基準身高</div>
+                            <div id="baseHeightDisplay" class="text-xs font-bold text-slate-200">0.80 m</div>
+                        </div>
+                        <i class="fa-solid fa-ruler-vertical text-slate-600"></i>
+                    </div>
+                    <div class="bg-slate-900/50 rounded-xl p-2.5 border border-slate-800/80 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] text-slate-400">標準基準體重</div>
+                            <div id="baseWeightDisplay" class="text-xs font-bold text-slate-200">24.00 kg</div>
+                        </div>
+                        <i class="fa-solid fa-weight-scale text-slate-600"></i>
+                    </div>
+                </div>
+
+                <!-- Input Height and Weight -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">抓取身長 Height (m)</label>
+                        <div class="relative">
+                            <input type="number" id="inputHeight" step="0.01" min="0.01" value="0.80" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white font-mono focus:outline-none focus:border-pogo-cyan">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-bold">m</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">抓取體重 Weight (kg)</label>
+                        <div class="relative">
+                            <input type="number" id="inputWeight" step="0.01" min="0.01" value="24.00" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white font-mono focus:outline-none focus:border-pogo-cyan">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-bold">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IV Inputs -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-semibold text-slate-400">個體值個數 (IV Bonus)</label>
+                        <span id="ivSumDisplay" class="text-xs font-mono text-pogo-cyan font-bold">45 / 45 (100%)</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-0.5">攻擊 ATK</span>
+                            <input type="number" id="ivAtk" min="0" max="15" value="15" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-red-400 font-mono font-bold focus:outline-none focus:border-red-400">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-0.5">防禦 DEF</span>
+                            <input type="number" id="ivDef" min="0" max="15" value="15" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-green-400 font-mono font-bold focus:outline-none focus:border-green-400">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-0.5">體力 HP</span>
+                            <input type="number" id="ivHp" min="0" max="15" value="15" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-400">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <section class="lg:col-span-7 space-y-6">
+
+            <!-- Primary Showcase Score Dashboard Card -->
+            <div class="glass-panel rounded-2xl p-6 border border-pogo-border relative overflow-hidden glass-panel-glow">
+                
+                <!-- Background Glow accent -->
+                <div class="absolute -right-12 -top-12 w-48 h-48 bg-pogo-blue/20 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <span class="text-xs font-bold text-pogo-cyan tracking-wider uppercase">Showcase 競賽評估結果</span>
+                        <h2 id="pokemonDisplayName" class="text-2xl font-black text-white mt-0.5 flex items-center gap-2">
+                            懶人獺 Slakoth
+                        </h2>
+                    </div>
+
+                    <!-- Size Badge Tag -->
+                    <div class="flex items-center gap-2">
+                        <div id="sizeBadge" class="px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-pogo-xxl/20 text-pogo-xxl border-pogo-xxl/40">
+                            <i class="fa-solid fa-crown text-xs"></i> XXL 特大型
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Showcase Main Score Counter -->
+                <div class="mt-6 grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+                    
+                    <div class="sm:col-span-5 text-center sm:text-left bg-slate-900/60 rounded-2xl p-4 border border-slate-800/90">
+                        <span class="text-xs text-slate-400 font-medium">預估展示會總得分 (Total Score)</span>
+                        <div class="flex items-baseline justify-center sm:justify-start gap-1 mt-1">
+                            <span id="totalScoreDisplay" class="text-4xl font-extrabold font-mono text-transparent bg-clip-text bg-gradient-to-r from-pogo-cyan via-white to-pogo-blue">
+                                1,024
+                            </span>
+                            <span class="text-sm font-bold text-slate-400">/ 1000+ pts</span>
+                        </div>
+                        <p id="scoreRankComment" class="text-[11px] text-emerald-400 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1">
+                            <i class="fa-solid fa-trophy"></i> 極高機率奪得第一名展示會名次！
+                        </p>
+                    </div>
+
+                    <!-- Detailed Breakdown Progress Bars -->
+                    <div class="sm:col-span-7 space-y-3">
+                        
+                        <!-- Height Component -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-ruler-vertical text-amber-400"></i> 身高得分 (Max 800)
+                                </span>
+                                <span id="heightScoreText" class="font-mono text-amber-300">800.0 pts</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="heightBar" class="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-500" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Weight Component -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-weight-scale text-emerald-400"></i> 體重得分 (Max 150)
+                                </span>
+                                <span id="weightScoreText" class="font-mono text-emerald-300">174.0 pts</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="weightBar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full transition-all duration-500" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- IV Component -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-star text-pogo-cyan"></i> 個體值加分 (Max 50)
+                                </span>
+                                <span id="ivScoreText" class="font-mono text-pogo-cyan">50.0 pts</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="ivBar" class="h-full bg-gradient-to-r from-pogo-blue to-pogo-cyan rounded-full transition-all duration-500" style="width: 100%;"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-5 border-t border-slate-800">
+                    <h3 class="text-xs font-bold text-slate-400 mb-3 flex items-center justify-between">
+                        <span>體型分佈區間視圖 (Height & Weight Spectrum)</span>
+                        <span id="ratioMultiplierText" class="text-pogo-cyan font-mono">身高 1.50x · 體重 1.60x</span>
+                    </h3>
+                    <div class="relative h-20 w-full">
+                        <canvas id="spectrumChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-pogo-border space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-link text-pogo-cyan"></i> 外部資料填寫助手 (PGOXXL DB & 網址帶入)
+                    </h2>
+                    <span class="text-xs text-slate-400">一鍵傳送參數</span>
+                </div>
+
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    可直接透過底下連結將當前寶可夢與辨識到的身高體重直接同步帶入外部資料庫 (例如 pgoxxldb.com) 或複製參數：
+                </p>
+
+                <!-- Generated Target URL Box -->
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+                    <input type="text" id="generatedUrlInput" readonly class="w-full bg-transparent text-xs text-pogo-cyan font-mono focus:outline-none overflow-x-auto truncate">
+                    
+                    <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                        <button onclick="copyGeneratedUrl()" class="flex-1 sm:flex-none px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-copy text-xs"></i> 複製網址
+                        </button>
+                        <a id="externalOpenBtn" href="#" target="_blank" class="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-pogo-blue hover:bg-blue-600 text-xs font-bold text-white transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-pogo-blue/20">
+                            開啟網頁 <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Fast Fill Snippet Generator -->
+                <div class="bg-slate-900/40 rounded-xl p-3 border border-slate-800/80 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-semibold text-slate-300">💡 瀏覽器書籤小工具 (Bookmarklet / 貼上腳本)</span>
+                        <button onclick="copyBookmarklet()" class="text-pogo-cyan hover:underline text-[11px]">複製自動填寫腳本</button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">
+                        若已經打開 pgoxxldb 網頁，可在瀏覽器控制台 (F12) 貼上此程式碼，自動填入當前辨識到的身長與體重。
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-900 border border-pogo-cyan text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-pogo-cyan text-lg"></i>
+        <span id="toastMessage" class="text-xs font-medium">操作成功</span>
+    </div>
+
+    <script>
+        // Database of Pokémon Base Height & Base Weight
+        const POKEMON_DATABASE = [
+            { id: 'no0287', name: '懶人獺 Slakoth', baseHeight: 0.8, baseWeight: 24.0 },
+            { id: 'no0025', name: '皮卡丘 Pikachu', baseHeight: 0.4, baseWeight: 6.0 },
+            { id: 'no0143', name: '卡比獸 Snorlax', baseHeight: 2.1, baseWeight: 460.0 },
+            { id: 'no0321', name: '吼鯨王 Wailord', baseHeight: 14.5, baseWeight: 398.0 },
+            { id: 'no0006', name: '噴火龍 Charizard', baseHeight: 1.7, baseWeight: 90.5 },
+            { id: 'no0129', name: '鯉魚王 Magikarp', baseHeight: 0.9, baseWeight: 10.0 },
+            { id: 'no0448', name: '路卡利歐 Lucario', baseHeight: 1.2, baseWeight: 54.0 },
+            { id: 'custom', name: '➕ 自訂其他寶可夢 (Custom)', baseHeight: 1.0, baseWeight: 20.0 }
+        ];
+
+        let spectrumChartInstance = null;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            populateSpeciesSelect();
+            initSpectrumChart();
+            loadPreset('slakoth_xxl');
+            setupDragAndDrop();
+        });
+
+        function populateSpeciesSelect() {
+            const select = document.getElementById('speciesSelect');
+            select.innerHTML = '';
+            POKEMON_DATABASE.forEach(pokemon => {
+                const opt = document.createElement('option');
+                opt.value = pokemon.id;
+                opt.textContent = pokemon.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function loadPreset(type) {
+            if (type === 'slakoth_xxl') {
+                document.getElementById('speciesSelect').value = 'no0287';
+                handleSpeciesChange();
+                document.getElementById('inputHeight').value = 1.24;
+                document.getElementById('inputWeight').value = 38.4;
+                document.getElementById('ivAtk').value = 15;
+                document.getElementById('ivDef').value = 15;
+                document.getElementById('ivHp').value = 15;
+                showBoxOverlay(25, 45, 60, 20);
+            } else if (type === 'pikachu_xxs') {
+                document.getElementById('speciesSelect').value = 'no0025';
+                handleSpeciesChange();
+                document.getElementById('inputHeight').value = 0.19;
+                document.getElementById('inputWeight').value = 2.1;
+                document.getElementById('ivAtk').value = 12;
+                document.getElementById('ivDef').value = 14;
+                document.getElementById('ivHp').value = 10;
+                hideBoxOverlay();
+            } else if (type === 'snorlax_xl') {
+                document.getElementById('speciesSelect').value = 'no0143';
+                handleSpeciesChange();
+                document.getElementById('inputHeight').value = 2.45;
+                document.getElementById('inputWeight').value = 580.0;
+                document.getElementById('ivAtk').value = 15;
+                document.getElementById('ivDef').value = 15;
+                document.getElementById('ivHp').value = 14;
+                hideBoxOverlay();
+            }
+            calculateAll();
+            showToast('已載入預設範例資料');
+        }
+
+        function handleSpeciesChange() {
+            const speciesId = document.getElementById('speciesSelect').value;
+            const target = POKEMON_DATABASE.find(p => p.id === speciesId);
+            if (target) {
+                document.getElementById('baseHeightDisplay').textContent = target.baseHeight.toFixed(2) + ' m';
+                document.getElementById('baseWeightDisplay').textContent = target.baseWeight.toFixed(2) + ' kg';
+                document.getElementById('pokemonDisplayName').textContent = target.name;
+            }
+            calculateAll();
+        }
+
+        function calculateAll() {
+            const speciesId = document.getElementById('speciesSelect').value;
+            const target = POKEMON_DATABASE.find(p => p.id === speciesId) || { baseHeight: 1.0, baseWeight: 20.0, name: '寶可夢' };
+
+            const height = parseFloat(document.getElementById('inputHeight').value) || 0;
+            const weight = parseFloat(document.getElementById('inputWeight').value) || 0;
+
+            const ivAtk = parseInt(document.getElementById('ivAtk').value) || 0;
+            const ivDef = parseInt(document.getElementById('ivDef').value) || 0;
+            const ivHp = parseInt(document.getElementById('ivHp').value) || 0;
+            const totalIv = ivAtk + ivDef + ivHp;
+
+            document.getElementById('ivSumDisplay').textContent = `${totalIv} / 45 (${Math.round((totalIv/45)*100)}%)`;
+
+            const heightRatio = height / target.baseHeight;
+            const weightRatio = weight / target.baseWeight;
+
+            // Height Score (Max 800)
+            let heightScore = (heightRatio / 1.5) * 800;
+            if (heightScore > 800) heightScore = 800 + (heightScore - 800) * 0.1; // Diminishing returns above 1.5x
+
+            // Weight Score (Max 150)
+            let weightScore = (weightRatio / 1.5) * 150;
+
+            // IV Score (Max 50)
+            let ivScore = (totalIv / 45) * 50;
+
+            const totalScore = Math.round(heightScore + weightScore + ivScore);
+
+            // Update Score Displays
+            document.getElementById('totalScoreDisplay').textContent = totalScore.toLocaleString();
+            document.getElementById('heightScoreText').textContent = `${heightScore.toFixed(1)} pts`;
+            document.getElementById('weightScoreText').textContent = `${weightScore.toFixed(1)} pts`;
+            document.getElementById('ivScoreText').textContent = `${ivScore.toFixed(1)} pts`;
+
+            document.getElementById('heightBar').style.width = `${Math.min(100, (heightScore/800)*100)}%`;
+            document.getElementById('weightBar').style.width = `${Math.min(100, (weightScore/150)*100)}%`;
+            document.getElementById('ivBar').style.width = `${Math.min(100, (ivScore/50)*100)}%`;
+
+            // Size Category Classification
+            updateSizeCategory(heightRatio, weightRatio);
+
+            // Update Multiplier Info
+            document.getElementById('ratioMultiplierText').textContent = `身長 ${heightRatio.toFixed(2)}x · 體重 ${weightRatio.toFixed(2)}x`;
+
+            // Update Chart Indicator
+            updateSpectrumChart(heightRatio);
+
+            // Update External Link Output
+            updateExternalLinks(speciesId, height, weight);
+        }
+
+        function updateSizeCategory(heightRatio, weightRatio) {
+            const badge = document.getElementById('sizeBadge');
+            const comment = document.getElementById('scoreRankComment');
+
+            if (heightRatio >= 1.5) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-pogo-xxl/20 text-pogo-xxl border-pogo-xxl/40';
+                badge.innerHTML = `<i class="fa-solid fa-crown text-xs"></i> XXL 特大型`;
+                comment.className = 'text-[11px] text-emerald-400 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1';
+                comment.innerHTML = `<i class="fa-solid fa-trophy"></i> 展示會頂尖競爭者！極高機會奪冠`;
+            } else if (heightRatio >= 1.25) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border-amber-500/40';
+                badge.innerHTML = `<i class="fa-solid fa-arrow-up-long text-xs"></i> XL 大型`;
+                comment.className = 'text-[11px] text-amber-300 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1';
+                comment.innerHTML = `<i class="fa-solid fa-medal"></i> 表現優良，有機會進入展示會前三名`;
+            } else if (heightRatio <= 0.5) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-pogo-xxs/20 text-pogo-xxs border-pogo-xxs/40';
+                badge.innerHTML = `<i class="fa-solid fa-compress text-xs"></i> XXS 特小型`;
+                comment.className = 'text-[11px] text-sky-300 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1';
+                comment.innerHTML = `<i class="fa-solid fa-gem"></i> 稀有 XXS 迷你寶可夢！適合收藏`;
+            } else if (heightRatio <= 0.75) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-sky-500/20 text-sky-200 border-sky-500/40';
+                badge.innerHTML = `<i class="fa-solid fa-arrow-down-long text-xs"></i> XS 小型`;
+                comment.className = 'text-[11px] text-slate-400 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1';
+                comment.innerHTML = `<i class="fa-solid fa-circle-info"></i> 小型體型，展示會分數較低`;
+            } else {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-slate-800 text-slate-200 border-slate-700';
+                badge.innerHTML = `<i class="fa-solid fa-minus text-xs"></i> 一般體型 (Normal)`;
+                comment.className = 'text-[11px] text-slate-400 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1';
+                comment.innerHTML = `<i class="fa-solid fa-chart-line"></i> 標準體型範圍`;
+            }
+        }
+
+        function initSpectrumChart() {
+            const ctx = document.getElementById('spectrumChart').getContext('2d');
+            spectrumChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['XXS (<=0.5x)', 'XS (0.75x)', 'Normal (1.0x)', 'XL (1.25x)', 'XXL (>=1.5x)'],
+                    datasets: [{
+                        data: [0.5, 0.75, 1.0, 1.25, 1.5],
+                        backgroundColor: [
+                            'rgba(56, 189, 248, 0.3)',
+                            'rgba(14, 165, 233, 0.3)',
+                            'rgba(148, 163, 184, 0.3)',
+                            'rgba(245, 158, 11, 0.3)',
+                            'rgba(255, 69, 0, 0.6)'
+                        ],
+                        borderColor: [
+                            '#38BDF8',
+                            '#0EA5E9',
+                            '#94A3B8',
+                            '#F59E0B',
+                            '#FF4500'
+                        ],
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 10 } }
+                        },
+                        y: {
+                            display: false,
+                            min: 0,
+                            max: 2.0
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateSpectrumChart(ratio) {
+            if (!spectrumChartInstance) return;
+            // Dynamic bar highlighting
+            const bgColors = [
+                ratio <= 0.5 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(56, 189, 248, 0.2)',
+                (ratio > 0.5 && ratio <= 0.85) ? 'rgba(14, 165, 233, 0.9)' : 'rgba(14, 165, 233, 0.2)',
+                (ratio > 0.85 && ratio < 1.15) ? 'rgba(148, 163, 184, 0.9)' : 'rgba(148, 163, 184, 0.2)',
+                (ratio >= 1.15 && ratio < 1.45) ? 'rgba(245, 158, 11, 0.9)' : 'rgba(245, 158, 11, 0.2)',
+                ratio >= 1.45 ? 'rgba(255, 69, 0, 0.9)' : 'rgba(255, 69, 0, 0.2)'
+            ];
+            spectrumChartInstance.data.datasets[0].backgroundColor = bgColors;
+            spectrumChartInstance.update('none');
+        }
+
+        function setupDragAndDrop() {
+            const dropzone = document.getElementById('dropzone');
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add('border-pogo-cyan', 'bg-slate-800/80');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('border-pogo-cyan', 'bg-slate-800/80');
+                }, false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) processImageFile(files[0]);
+            });
+
+            dropzone.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'BUTTON') triggerFileInput();
+            });
+
+            window.addEventListener('paste', (e) => {
+                const items = e.clipboardData.items;
+                for (let item of items) {
+                    if (item.type.indexOf('image') !== -1) {
+                        const blob = item.getAsFile();
+                        processImageFile(blob);
+                        break;
+                    }
+                }
+            });
+        }
+
+        function triggerFileInput() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            if (event.target.files.length > 0) {
+                processImageFile(event.target.files[0]);
+            }
+        }
+
+        function processImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('請上傳有效的圖片檔案');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('imagePreview');
+                img.src = e.target.result;
+                document.getElementById('uploadPrompt').classList.add('hidden');
+                document.getElementById('previewContainer').classList.remove('hidden');
+                
+                runOCR(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function runOCR(imageSrc) {
+            const statusText = document.getElementById('ocrStatusText');
+            const icon = document.getElementById('ocrIcon');
+            const scanline = document.getElementById('scanline');
+
+            statusText.textContent = 'AI 掃描辨識數值中...';
+            icon.className = 'fa-solid fa-spinner fa-spin text-pogo-cyan';
+            scanline.classList.add('is-scanning');
+
+            try {
+                const worker = await Tesseract.createWorker('eng');
+                const ret = await worker.recognize(imageSrc);
+                await worker.terminate();
+
+                scanline.classList.remove('is-scanning');
+                const text = ret.data.text;
+                console.log("OCR Result Text:", text);
+
+                // Regex matches for Height (m) and Weight (kg)
+                const heightMatch = text.match(/(\d+[\.,]\d+)\s*m/i);
+                const weightMatch = text.match(/(\d+[\.,]\d+)\s*kg/i);
+
+                let foundCount = 0;
+
+                if (heightMatch) {
+                    const parsedHeight = parseFloat(heightMatch[1].replace(',', '.'));
+                    if (!isNaN(parsedHeight)) {
+                        document.getElementById('inputHeight').value = parsedHeight;
+                        foundCount++;
+                    }
+                }
+
+                if (weightMatch) {
+                    const parsedWeight = parseFloat(weightMatch[1].replace(',', '.'));
+                    if (!isNaN(parsedWeight)) {
+                        document.getElementById('inputWeight').value = parsedWeight;
+                        foundCount++;
+                    }
+                }
+
+                if (foundCount > 0) {
+                    statusText.textContent = `成功自動抓取 ${foundCount} 個數值！`;
+                    icon.className = 'fa-solid fa-circle-check text-emerald-400';
+                    showBoxOverlay(30, 40, 50, 15);
+                    calculateAll();
+                    showToast('已自動辨識並填入截圖數值');
+                } else {
+                    statusText.textContent = '無法精確識別，已使用模擬預設值，請手動確認。';
+                    icon.className = 'fa-solid fa-triangle-exclamation text-amber-400';
+                }
+
+            } catch (err) {
+                console.error(err);
+                scanline.classList.remove('is-scanning');
+                statusText.textContent = 'OCR 辨識出錯，請手動輸入數值。';
+                icon.className = 'fa-solid fa-circle-xmark text-red-400';
+            }
+        }
+
+        function showBoxOverlay(top, left, width, height) {
+            const hBox = document.getElementById('boxHeight');
+            const wBox = document.getElementById('boxWeight');
+
+            hBox.style.top = top + '%';
+            hBox.style.left = left + '%';
+            hBox.classList.remove('hidden');
+
+            wBox.style.top = (top + 15) + '%';
+            wBox.style.left = left + '%';
+            wBox.classList.remove('hidden');
+        }
+
+        function hideBoxOverlay() {
+            document.getElementById('boxHeight').classList.add('hidden');
+            document.getElementById('boxWeight').classList.add('hidden');
+        }
+
+        function updateExternalLinks(species, height, weight) {
+            const baseUrl = `https://pgoxxldb.com/zh-hant/size-calculator/`;
+            const fullUrl = `${baseUrl}?pokemon=${species}&height=${height}&weight=${weight}`;
+            
+            document.getElementById('generatedUrlInput').value = fullUrl;
+            document.getElementById('externalOpenBtn').href = fullUrl;
+        }
+
+        function copyGeneratedUrl() {
+            const input = document.getElementById('generatedUrlInput');
+            input.select();
+            document.execCommand('copy');
+            showToast('已複製帶參數網址至剪貼簿！');
+        }
+
+        function copyBookmarklet() {
+            const h = document.getElementById('inputHeight').value;
+            const w = document.getElementById('inputWeight').value;
+            const script = `javascript:(function(){let hInputs=document.querySelectorAll('input[name*="height"],input[id*="height"]');let wInputs=document.querySelectorAll('input[name*="weight"],input[id*="weight"]');if(hInputs.length)hInputs[0].value='${h}';if(wInputs.length)wInputs[0].value='${w}';alert('已自動填入：身高 ${h}m, 體重 ${w}kg');})();`;
+            
+            const temp = document.createElement('textarea');
+            temp.value = script;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            
+            showToast('已複製自動填寫腳本！');
+        }
+
+        function resetInputs() {
+            document.getElementById('inputHeight').value = 0.8;
+            document.getElementById('inputWeight').value = 24.0;
+            document.getElementById('ivAtk').value = 15;
+            document.getElementById('ivDef').value = 15;
+            document.getElementById('ivHp').value = 15;
+            calculateAll();
+            showToast('數值已重置');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toastMessage');
+            msg.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
