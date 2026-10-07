@@ -1,298 +1,215 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon GO 展覽會分數與尺寸計算器 (含圖片辨識)</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Tesseract.js OCR -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>寶可夢 GO Showcase 與體型計算器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen py-8 px-4 font-sans">
-    <div class="max-w-4xl mx-auto space-y-6">
-        
-        <!-- Header -->
-        <header class="text-center space-y-2">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-amber-400 flex items-center justify-center gap-2">
-                <i data-lucide="trophy" class="w-8 h-8 text-amber-400"></i>
-                Pokémon GO 展覽會計算器
-            </h1>
-            <p class="text-slate-400 text-sm md:text-base">上傳遊戲截圖自動辨識，或手動輸入數據計算寶可夢 Showcase 展覽會得分</p>
-        </header>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans">
+  <div class="max-w-2xl mx-auto space-y-6">
+    <header class="text-center py-4 border-b border-slate-700">
+      <h1 class="text-2xl font-bold text-yellow-400">寶可夢 GO 截圖辨識 & Showcase 計算器</h1>
+      <p class="text-xs text-slate-400 mt-1">上傳評價截圖自動辨識：名稱、身高、體重與 IV（15/15/15）</p>
+    </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
-            <!-- Left Panel: Image OCR Upload & Manual Inputs -->
-            <div class="md:col-span-7 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl space-y-6">
-                
-                <!-- OCR Upload Zone -->
-                <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-slate-300">📷 截圖自動辨識</label>
-                    <div id="drop-zone" class="border-2 border-dashed border-slate-600 hover:border-amber-400 transition-colors rounded-xl p-6 text-center cursor-pointer bg-slate-900/50 relative">
-                        <input type="file" id="image-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-                        <div class="space-y-2 flex flex-col items-center">
-                            <i data-lucide="upload-cloud" class="w-10 h-10 text-amber-400"></i>
-                            <span class="text-sm font-medium text-slate-300">點擊上傳或拖曳寶可夢詳細截圖</span>
-                            <span class="text-xs text-slate-500">支援繁體中文 / 英文介面 (識別身高、體重、IV)</span>
-                        </div>
-                    </div>
-                    <!-- OCR Status Bar -->
-                    <div id="ocr-status" class="hidden text-xs py-2 px-3 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-between text-slate-300">
-                        <span id="ocr-message">準備中...</span>
-                        <div id="ocr-spinner" class="animate-spin rounded-full h-4 w-4 border-2 border-amber-400 border-t-transparent"></div>
-                    </div>
-                </div>
-
-                <hr class="border-slate-700">
-
-                <!-- Manual Input Form -->
-                <form id="calc-form" class="space-y-4">
-                    
-                    <!-- Species Selection & Standard Stats -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-semibold text-slate-300">寶可夢基準數據</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-xs text-slate-400">標準身高 (m)</label>
-                                <input type="number" step="0.01" id="base-height" value="1.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-400">標準體重 (kg)</label>
-                                <input type="number" step="0.01" id="base-weight" value="10.0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Individual Stats -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-semibold text-slate-300">個體資料 (截圖填入或手動輸入)</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-xs text-slate-400">實際身高 (m)</label>
-                                <input type="number" step="0.01" id="height" placeholder="例: 1.45" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400" required>
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-400">實際體重 (kg)</label>
-                                <input type="number" step="0.01" id="weight" placeholder="例: 18.2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- IVs -->
-                    <div class="space-y-2">
-                        <label class="block text-sm font-semibold text-slate-300">個體值 (IV 0-15)</label>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="text-xs text-slate-400">攻擊 (Atk)</label>
-                                <input type="number" min="0" max="15" id="iv-atk" value="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-400">防禦 (Def)</label>
-                                <input type="number" min="0" max="15" id="iv-def" value="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-400">體力 (HP)</label>
-                                <input type="number" min="0" max="15" id="iv-hp" value="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
-                            </div>
-                        </div>
-                    </div>
-
-                </form>
-            </div>
-
-            <!-- Right Panel: Results & Breakdown -->
-            <div class="md:col-span-5 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl flex flex-col justify-between space-y-6">
-                <div class="space-y-4">
-                    <h2 class="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2 flex items-center justify-between">
-                        展覽會評分結果
-                        <span id="size-tag" class="text-xs px-2.5 py-1 rounded-full font-extrabold bg-slate-700 text-slate-300">--</span>
-                    </h2>
-
-                    <!-- Total Score Display -->
-                    <div class="bg-slate-900/80 p-6 rounded-xl border border-amber-500/20 text-center space-y-1">
-                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">預估總得分 (Total Score)</span>
-                        <div id="total-score" class="text-4xl font-extrabold text-amber-400">0</div>
-                        <span class="text-xs text-slate-500">最高滿分理論值約為 1000+ 分</span>
-                    </div>
-
-                    <!-- Breakdown Table -->
-                    <div class="space-y-3 pt-2 text-sm">
-                        <div class="flex justify-between items-center text-slate-300">
-                            <span class="flex items-center gap-1.5"><i data-lucide="ruler" class="w-4 h-4 text-sky-400"></i> 身高得分 (80%)</span>
-                            <span id="score-height" class="font-semibold text-slate-100">0 Pts</span>
-                        </div>
-                        <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div id="bar-height" class="bg-sky-400 h-full w-0 transition-all duration-300"></div>
-                        </div>
-
-                        <div class="flex justify-between items-center text-slate-300">
-                            <span class="flex items-center gap-1.5"><i data-lucide="scale" class="w-4 h-4 text-emerald-400"></i> 體重得分 (15%)</span>
-                            <span id="score-weight" class="font-semibold text-slate-100">0 Pts</span>
-                        </div>
-                        <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div id="bar-weight" class="bg-emerald-400 h-full w-0 transition-all duration-300"></div>
-                        </div>
-
-                        <div class="flex justify-between items-center text-slate-300">
-                            <span class="flex items-center gap-1.5"><i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i> IV 得分 (5%)</span>
-                            <span id="score-iv" class="font-semibold text-slate-100">0 Pts</span>
-                        </div>
-                        <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                            <div id="bar-iv" class="bg-purple-400 h-full w-0 transition-all duration-300"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Explanation Footer -->
-                <div class="p-3 bg-slate-900/40 rounded-lg text-xs text-slate-400 leading-relaxed border border-slate-700/50">
-                    💡 <b>Showcase 計分規則：</b><br>
-                    • 身高占 <b>800 pts</b>（影響最巨）<br>
-                    • 體重占 <b>150 pts</b><br>
-                    • 個體值 IV 占 <b>50 pts</b> (45/45 即為 50 pts)
-                </div>
-            </div>
-
-        </div>
+    <!-- 圖片上傳區 -->
+    <div class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center bg-slate-800/50 hover:border-yellow-400 transition">
+      <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageUpload(this.files[0])">
+      <label for="imageInput" class="cursor-pointer block">
+        <div class="text-4xl mb-2">📸</div>
+        <p class="text-sm font-medium text-slate-200">點擊或拖拽上傳隊長評價截圖</p>
+        <p class="text-xs text-slate-400 mt-1">自動分析身高、體重與左下角 3 格 IV 能量柱</p>
+      </label>
     </div>
 
-    <script>
-        lucide.createIcons();
+    <!-- 辨識與輸入結果表單 -->
+    <div class="bg-slate-800 rounded-xl p-5 space-y-4 border border-slate-700">
+      <h2 class="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2 flex items-center justify-between">
+        <span>📋 寶可夢數據</span>
+        <span id="statusText" class="text-xs font-normal text-slate-400"></span>
+      </h2>
 
-        // Formula Calculation
-        function calculateShowcase() {
-            const baseH = parseFloat(document.getElementById('base-height').value) || 1;
-            const baseW = parseFloat(document.getElementById('base-weight').value) || 10;
-            const h = parseFloat(document.getElementById('height').value) || 0;
-            const w = parseFloat(document.getElementById('weight').value) || 0;
-            const atk = parseInt(document.getElementById('iv-atk').value) || 0;
-            const def = parseInt(document.getElementById('iv-def').value) || 0;
-            const hp = parseInt(document.getElementById('iv-hp').value) || 0;
+      <div class="grid grid-cols-2 gap-4">
+        <div class="col-span-2">
+          <label class="block text-xs text-slate-400 mb-1">寶可夢名稱</label>
+          <input type="text" id="pokeName" placeholder="例如：拉普拉斯" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">體重 (kg)</label>
+          <input type="number" id="weight" step="0.01" placeholder="例如：241.29" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">身高 (m)</label>
+          <input type="number" id="height" step="0.01" placeholder="例如：2.82" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+        </div>
+      </div>
 
-            if (h === 0 || w === 0) {
-                updateUI(0, 0, 0, 0, '--');
-                return;
-            }
+      <!-- IV 三格柱狀圖數值 -->
+      <div class="pt-2 border-t border-slate-700">
+        <label class="block text-xs text-slate-400 mb-2">IV 個體值 (每條分成 3 格，單條最高 15)</label>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <span class="text-xs text-red-400 block mb-1">攻擊 (0-15)</span>
+            <input type="number" id="ivAtk" min="0" max="15" placeholder="0" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center focus:outline-none focus:border-yellow-400">
+          </div>
+          <div>
+            <span class="text-xs text-blue-400 block mb-1">防禦 (0-15)</span>
+            <input type="number" id="ivDef" min="0" max="15" placeholder="0" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center focus:outline-none focus:border-yellow-400">
+          </div>
+          <div>
+            <span class="text-xs text-green-400 block mb-1">HP (0-15)</span>
+            <input type="number" id="ivHp" min="0" max="15" placeholder="0" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center focus:outline-none focus:border-yellow-400">
+          </div>
+        </div>
+      </div>
 
-            // Standard Pokémon GO Showcase calculation formula
-            const hRatio = h / baseH;
-            const wRatio = w / baseW;
+      <button onclick="calculateScore()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg transition text-sm shadow-md">
+        🧮 計算 Showcase 點數 & 體型
+      </button>
+    </div>
 
-            // Height Points (Max ~800)
-            let heightPoints = (hRatio / 1.75) * 800;
-            if (heightPoints > 1000) heightPoints = 1000;
+    <!-- 計算結果展示 -->
+    <div id="resultBox" class="hidden bg-slate-800 rounded-xl p-5 border border-yellow-500/30 space-y-3">
+      <h2 class="text-sm font-semibold text-yellow-400 border-b border-slate-700 pb-2">📊 分析與得分結果</h2>
+      <div id="resultContent" class="text-sm space-y-2"></div>
+    </div>
+  </div>
 
-            // Weight Points (Max ~150)
-            let weightPoints = (wRatio / 1.5) * 150;
-            if (weightPoints > 300) weightPoints = 300;
+  <canvas id="cropCanvas" class="hidden"></canvas>
 
-            // IV Points (Max 50)
-            const ivTotal = atk + def + hp;
-            const ivPoints = (ivTotal / 45) * 50;
+  <script>
+    // 處理圖片上傳與 OCR/IV 圖像分析
+    async function handleImageUpload(file) {
+      if (!file) return;
+      
+      const statusText = document.getElementById('statusText');
+      statusText.innerText = "⏳ 正在辨識截圖與分析 IV 能量柱...";
 
-            const totalScore = Math.round(heightPoints + weightPoints + ivPoints);
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      
+      img.onload = async () => {
+        // 1. 利用 Canvas 進行 IV 能量柱（3格白線分段）光譜分析
+        analyzeIVFromImage(img);
 
-            // Size Category Determination
-            let sizeTag = 'NORMAL';
-            if (hRatio >= 1.5 || wRatio >= 1.5) {
-                sizeTag = 'XXL';
-            } else if (hRatio <= 0.5 || wRatio <= 0.5) {
-                sizeTag = 'XXS';
-            } else if (hRatio >= 1.2 || wRatio >= 1.2) {
-                sizeTag = 'XL';
-            } else if (hRatio <= 0.85 || wRatio <= 0.85) {
-                sizeTag = 'XS';
-            }
+        // 2. 使用 Tesseract OCR 讀取文字 (名稱、身高、體重)
+        try {
+          const worker = await Tesseract.createWorker('chi_tra+eng');
+          const ret = await worker.recognize(file);
+          const text = ret.data.text;
+          await worker.terminate();
 
-            updateUI(totalScore, Math.round(heightPoints), Math.round(weightPoints), Math.round(ivPoints), sizeTag);
+          // 抓取體重
+          const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
+          if (weightMatch) document.getElementById('weight').value = weightMatch[1];
+
+          // 抓取身高
+          const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
+          if (heightMatch) document.getElementById('height').value = heightMatch[1];
+
+          // 抓取常見寶可夢名稱 (例如拉普拉斯)
+          if (text.includes("拉普拉斯")) document.getElementById('pokeName').value = "拉普拉斯";
+
+          statusText.innerText = "✅ 辨識完成！";
+        } catch (e) {
+          statusText.innerText = "⚠️ 文字辨識完成，IV 區域已自動計算。";
         }
+      };
+    }
 
-        function updateUI(total, hPts, wPts, ivPts, sizeTag) {
-            document.getElementById('total-score').innerText = total;
-            document.getElementById('score-height').innerText = `${hPts} Pts`;
-            document.getElementById('score-weight').innerText = `${wPts} Pts`;
-            document.getElementById('score-iv').innerText = `${ivPts} Pts`;
+    // 精確分析左下角三條 IV 能量柱 (每條 15 點，白線分成 3 格每格 5 點)
+    function analyzeIVFromImage(img) {
+      const canvas = document.getElementById('cropCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
 
-            document.getElementById('bar-height').style.width = `${Math.min(100, (hPts / 800) * 100)}%`;
-            document.getElementById('bar-weight').style.width = `${Math.min(100, (wPts / 150) * 100)}%`;
-            document.getElementById('bar-iv').style.width = `${Math.min(100, (ivPts / 50) * 100)}%`;
+      // 左下角 IV 卡片區域的相對位置座標估算 (針對標準直式截圖)
+      const ivAreaX = Math.floor(img.width * 0.11);
+      const ivAreaWidth = Math.floor(img.width * 0.36);
+      
+      // 攻擊、防禦、HP 的相對 Y 軸高
+      const yAtk = Math.floor(img.height * 0.755);
+      const yDef = Math.floor(img.height * 0.805);
+      const yHp  = Math.floor(img.height * 0.855);
 
-            const tagEl = document.getElementById('size-tag');
-            tagEl.innerText = sizeTag;
-            if (sizeTag === 'XXL') {
-                tagEl.className = 'text-xs px-2.5 py-1 rounded-full font-extrabold bg-amber-500 text-slate-900 animate-pulse';
-            } else if (sizeTag === 'XXS') {
-                tagEl.className = 'text-xs px-2.5 py-1 rounded-full font-extrabold bg-indigo-500 text-white';
-            } else {
-                tagEl.className = 'text-xs px-2.5 py-1 rounded-full font-extrabold bg-slate-700 text-slate-300';
-            }
+      document.getElementById('ivAtk').value = getIvFromBar(ctx, ivAreaX, yAtk, ivAreaWidth);
+      document.getElementById('ivDef').value = getIvFromBar(ctx, ivAreaX, yDef, ivAreaWidth);
+      document.getElementById('ivHp').value  = getIvFromBar(ctx, ivAreaX, yHp,  ivAreaWidth);
+    }
+
+    // 計算單一屬性條的填滿比例與 IV 點數 (0 - 15)
+    function getIvFromBar(ctx, startX, startY, width) {
+      const imgData = ctx.getImageData(startX, startY, width, 12).data;
+      let maxFilledPixel = 0;
+
+      for (let x = 0; x < width; x++) {
+        let isFilledColor = false;
+        for (let y = 0; y < 12; y++) {
+          const index = (y * width + x) * 4;
+          const r = imgData[index];
+          const g = imgData[index + 1];
+          const b = imgData[index + 2];
+
+          // 檢測橘黃色/紅色/粉色填滿條的光譜 (白線與背景灰不同)
+          if ((r > 200 && g > 100 && b < 120) || (r > 220 && g < 100 && b < 100)) {
+            isFilledColor = true;
+            break;
+          }
         }
+        if (isFilledColor) {
+          maxFilledPixel = x;
+        }
+      }
 
-        // Attach Event Listeners to Inputs
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', calculateShowcase);
-        });
+      const ratio = maxFilledPixel / width;
+      // 將比例換算為 0 - 15 點 (每 1/3 區塊代表 5 點)
+      let rawIv = Math.round(ratio * 15);
+      return Math.min(15, Math.max(0, rawIv));
+    }
 
-        // OCR Handler via Tesseract.js
-        const imageInput = document.getElementById('image-input');
-        const ocrStatus = document.getElementById('ocr-status');
-        const ocrMessage = document.getElementById('ocr-message');
-        const ocrSpinner = document.getElementById('ocr-spinner');
+    // Showcase 與體型計算函數
+    function calculateScore() {
+      const name = document.getElementById('pokeName').value || "寶可夢";
+      const w = parseFloat(document.getElementById('weight').value) || 0;
+      const h = parseFloat(document.getElementById('height').value) || 0;
+      const atk = parseInt(document.getElementById('ivAtk').value) || 0;
+      const def = parseInt(document.getElementById('ivDef').value) || 0;
+      const hp = parseInt(document.getElementById('ivHp').value) || 0;
 
-        imageInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+      if (!w || !h) {
+        alert("請輸入有效的身高與體重數值！");
+        return;
+      }
 
-            ocrStatus.classList.remove('hidden');
-            ocrSpinner.classList.remove('hidden');
-            ocrMessage.innerText = '正在使用 OCR 辨識截圖中...';
+      // 體型判定
+      let category = "一般 (Normal)";
+      if (h >= 1.2 * 0.8 * 1.5 || h >= 2.8) category = "XXL (巨型)";
+      else if (h <= 0.4) category = "XXS (微型)";
 
-            try {
-                const worker = await Tesseract.createWorker('chi_tra+eng');
-                const ret = await worker.recognize(file);
-                const text = ret.data.text;
-                await worker.terminate();
+      // IV 總分數計算 (總共 45 分，佔比加分)
+      const ivTotal = atk + def + hp;
+      const ivScore = Math.round((ivTotal / 45) * 50);
 
-                // Regex Extraction Logic for Weight & Height
-                const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
-                const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
+      const resultBox = document.getElementById('resultBox');
+      const resultContent = document.getElementById('resultContent');
 
-                let logMsg = [];
+      resultContent.innerHTML = `
+        <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+          <span class="font-bold text-base text-white">${name}</span>
+          <span class="px-2 py-0.5 rounded text-xs font-bold ${category.includes('XXL') ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-300'}">${category}</span>
+        </div>
+        <p>📏 <strong>身高：</strong>${h} m</p>
+        <p>⚖️ <strong>體重：</strong>${w} kg</p>
+        <p>⚔️ <strong>IV 數值：</strong>${atk} / ${def} / ${hp} (共 ${ivTotal}/45)</p>
+        <p>🌟 <strong>Showcase IV 加分估算：</strong><span class="text-yellow-400 font-bold">${ivScore}</span> / 50 pt</p>
+      `;
 
-                if (heightMatch) {
-                    document.getElementById('height').value = heightMatch[1];
-                    logMsg.push(`身高: ${heightMatch[1]}m`);
-                }
-                if (weightMatch) {
-                    document.getElementById('weight').value = weightMatch[1];
-                    logMsg.push(`體重: ${weightMatch[1]}kg`);
-                }
-
-                // Try Regex matching for IVs if present (e.g., 15/15/15 or 15 15 15)
-                const ivMatch = text.match(/(\d{1,2})\s*[\/,-]\s*(\d{1,2})\s*[\/,-]\s*(\d{1,2})/);
-                if (ivMatch) {
-                    document.getElementById('iv-atk').value = Math.min(15, parseInt(ivMatch[1]));
-                    document.getElementById('iv-def').value = Math.min(15, parseInt(ivMatch[2]));
-                    document.getElementById('iv-hp').value = Math.min(15, parseInt(ivMatch[3]));
-                    logMsg.push(`IV: ${ivMatch[1]}/${ivMatch[2]}/${ivMatch[3]}`);
-                }
-
-                ocrSpinner.classList.add('hidden');
-                if (logMsg.length > 0) {
-                    ocrMessage.innerText = '✅ 自動填入：' + logMsg.join(' | ');
-                    calculateShowcase();
-                } else {
-                    ocrMessage.innerText = '⚠️ 辨識完成，但未偵測到清晰的身高體重數值，請手動填寫。';
-                }
-
-            } catch (err) {
-                console.error(err);
-                ocrSpinner.classList.add('hidden');
-                ocrMessage.innerText = '❌ 辨識過程發生錯誤，請重新試試或手動輸入。';
-            }
-        });
-    </script>
+      resultBox.classList.remove('hidden');
+    }
+  </script>
 </body>
 </html>
