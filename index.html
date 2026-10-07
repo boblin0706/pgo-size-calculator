@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> 展覽會分數計算器 (AI 全自動版)</title>
+  <title>Pokémon GO 截圖自動辨識計算器 (純本地優化版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Tesseract.js 本地 OCR 引擎 -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-6 font-sans">
 
@@ -12,42 +14,33 @@
     
     <!-- 標題區 -->
     <header class="text-center py-3 border-b border-slate-800">
-      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">點數計算器</h1>
-      <p class="text-xs text-slate-400 mt-1">AI 視覺辨識 ➔ 自動對照圖鑑算出 Showcase PT 總分</p>
+      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">Pokémon GO 截圖辨識計算器</h1>
+      <p class="text-xs text-slate-400 mt-1">⚡ 本地極速優化版 ➔ 支援動態螢幕比例與裁切加速</p>
     </header>
 
-    <!-- API Key 設定區 -->
-    <div class="bg-slate-800/90 border border-amber-500/30 rounded-2xl p-4 space-y-2">
-      <label class="block text-xs font-bold text-amber-300">🔑 Gemini API Key 設定：</label>
-      <div class="flex gap-2">
-        <input type="password" id="apiKeyInput" placeholder="貼上 API Key (AIzaSy...)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-400 font-mono">
-        <button onclick="saveApiKey()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition">儲存 Key</button>
-      </div>
-      <p class="text-[11px] text-slate-400">💡 提示：API Key 僅儲存於本機瀏覽器 (localStorage)，不會洩漏。</p>
-    </div>
-
-    <!-- 圖片上傳區 -->
+    <!-- 圖片上傳卡片 -->
     <div class="bg-slate-800/80 border-2 border-dashed border-amber-500/40 rounded-2xl p-5 text-center hover:border-amber-400 transition-all shadow-lg">
-      <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processImageWithGemini(this.files[0])">
+      <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processScreenshot(this.files[0])">
       <label for="imageInput" class="cursor-pointer block space-y-2">
         <div class="text-3xl">📸</div>
-        <div class="text-sm font-semibold text-amber-300">點擊上傳寶可夢評價截圖</div>
+        <div class="text-sm font-semibold text-amber-300">點擊上傳隊長評價截圖</div>
         <div class="text-xs text-slate-400">依序辨識：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP</div>
       </label>
-      <div id="statusText" class="text-xs text-amber-400 mt-3 font-medium min-h-[1.25rem] break-all"></div>
+      <!-- 進度條與狀態 -->
+      <div id="statusText" class="text-xs text-amber-400 mt-3 font-medium min-h-[1.25rem]"></div>
     </div>
 
-    <!-- 數據表單 (順序 1~6) -->
+    <!-- 數據表單 -->
     <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xl">
       <div class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700 pb-2 flex justify-between items-center">
-        <span>📋 數據表單 (1 ~ 6 順序)</span>
-        <span class="text-[10px] text-amber-400/80">AI 自動填寫 / 可手動微調</span>
+        <span>📋 辨識數據表單</span>
+        <span class="text-[10px] text-amber-400/80">系統自動填寫 / 可手動微調</span>
       </div>
 
       <!-- 1. 名稱 -->
       <div>
         <label class="block text-xs font-medium text-slate-300 mb-1">1. 寶可夢名稱</label>
-        <input type="text" id="pokeName" placeholder="例如：拉普拉斯、膽小蟲" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
+        <input type="text" id="pokeName" placeholder="等待辨識..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -63,21 +56,18 @@
         </div>
       </div>
 
-      <!-- IV 個體值 (4.攻擊, 5.防禦, 6.HP) -->
+      <!-- IV 個體值 -->
       <div class="pt-2 border-t border-slate-700/60">
         <label class="block text-xs font-medium text-slate-300 mb-2">IV 個體值 (0 ~ 15)</label>
         <div class="grid grid-cols-3 gap-2.5">
-          <!-- 4. 攻擊 -->
           <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
             <span class="text-[11px] font-semibold text-rose-400 block mb-1">4. 攻擊</span>
             <input type="number" id="ivAtk" min="0" max="15" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-center font-bold text-amber-300 font-mono text-sm focus:outline-none focus:border-rose-400">
           </div>
-          <!-- 5. 防禦 -->
           <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
             <span class="text-[11px] font-semibold text-sky-400 block mb-1">5. 防禦</span>
             <input type="number" id="ivDef" min="0" max="15" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-center font-bold text-amber-300 font-mono text-sm focus:outline-none focus:border-sky-400">
           </div>
-          <!-- 6. HP -->
           <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
             <span class="text-[11px] font-semibold text-emerald-400 block mb-1">6. HP</span>
             <input type="number" id="ivHp" min="0" max="15" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-center font-bold text-amber-300 font-mono text-sm focus:outline-none focus:border-emerald-400">
@@ -102,8 +92,9 @@
 
   </div>
 
+  <canvas id="mainCanvas" class="hidden"></canvas>
+
   <script>
-    // 常用寶可夢官方平均數據庫 (平均身高 m, 平均體重 kg)
     const baseStatsDb = {
       "拉普拉斯": { height: 2.5, weight: 220.0 },
       "膽小蟲": { height: 0.5, weight: 12.0 },
@@ -115,103 +106,129 @@
       "卡比獸": { height: 2.1, weight: 460.0 }
     };
 
-    // 頁面載入時自動讀取已儲存的 API Key
-    window.onload = () => {
-      const savedKey = localStorage.getItem('gemini_api_key');
-      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
-    };
-
-    function saveApiKey() {
-      const key = document.getElementById('apiKeyInput').value.trim();
-      if (!key) {
-        alert("請輸入有效的 API Key！");
-        return;
-      }
-      localStorage.setItem('gemini_api_key', key);
-      alert("✅ API Key 已成功儲存於瀏覽器！");
-    }
-
-    async function processImageWithGemini(file) {
+    async function processScreenshot(file) {
       if (!file) return;
 
-      const rawApiKey = localStorage.getItem('gemini_api_key') || document.getElementById('apiKeyInput').value;
-      const apiKey = rawApiKey ? rawApiKey.trim() : "";
-
-      if (!apiKey) {
-        alert("請先輸入並儲存 Gemini API Key！");
-        return;
-      }
-
       const status = document.getElementById('statusText');
-      status.innerText = "🤖 AI 正在辨識截圖中...";
+      status.innerText = "⏳ 系統正在解析中 (優化加速中)...";
 
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64Data = reader.result.split(',')[1];
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
 
-        const prompt = `你是一個專業的 Pokémon GO 截圖分析師。請仔細讀取截圖，嚴格辨識：
-1. 寶可夢中文名稱 (例如：拉普拉斯、膽小蟲、稚山雀、臭泥)
-2. 體重 (kg，數字)
-3. 身高 (m，數字)
-4. 攻擊 IV (0-15 整數，第一格滿為5，第二格滿為10，全滿為15。膽小蟲橘條接近但未完全觸及第二條白線判定為9)
-5. 防禦 IV (0-15 整數)
-6. HP IV (0-15 整數)
-
-請嚴格只回傳 JSON，不要加任何 MarkDown 標記：
-{
-  "name": "名稱",
-  "weight": 0.0,
-  "height": 0.0,
-  "atk": 0,
-  "def": 0,
-  "hp": 0
-}`;
+      img.onload = async () => {
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
 
         try {
-          // 使用標準穩定版 Gemini 1.5 Flash Endpoint
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+          // 【優化 1】: 預裁切圖片，只取上半部 60% 給 OCR 辨識
+          const ocrCanvas = document.createElement('canvas');
+          ocrCanvas.width = img.width;
+          ocrCanvas.height = img.height * 0.6;
+          const ocrCtx = ocrCanvas.getContext('2d');
+          ocrCtx.drawImage(img, 0, 0, img.width, img.height * 0.6, 0, 0, img.width, img.height * 0.6);
+          const croppedDataUrl = ocrCanvas.toDataURL('image/jpeg');
 
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  { inline_data: { mime_type: file.type, data: base64Data } }
-                ]
-              }]
-            })
-          });
+          // 開始 Tesseract OCR 辨識
+          const worker = await Tesseract.createWorker('chi_tra+eng');
+          const ret = await worker.recognize(croppedDataUrl);
+          const text = ret.data.text;
+          await worker.terminate();
 
-          if (!response.ok) {
-            const errData = await response.json();
-            console.error("Gemini API Error Detail:", errData);
-            status.innerText = `❌ API 錯誤 (${response.status})：${errData.error?.message || '請檢查 Key 是否正確'}`;
-            return;
+          // 解析名稱
+          const ignoreWords = ['攻擊', '防禦', '體重', '身高', '捕捉', '糖果', '星塵', '升級', '個體', '飛行', '水', '毒', '蟲', '惡'];
+          const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          for (let line of lines) {
+            const clean = line.replace(/[^\u4e00-\u9fa5]/g, '');
+            if (clean.length >= 2 && clean.length <= 6 && !ignoreWords.some(w => clean.includes(w))) {
+              document.getElementById('pokeName').value = clean;
+              break;
+            }
           }
 
-          const data = await response.json();
-          const rawText = data.candidates[0].content.parts[0].text;
-          const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-          const parsed = JSON.parse(cleanJson);
+          // 解析體重與身高
+          const weightMatch = text.match(/(\d+(\.\d+)?)\s*(kg|k9|k)/i);
+          if (weightMatch) document.getElementById('weight').value = weightMatch[1];
 
-          // 依序填入 1~6
-          document.getElementById('pokeName').value = parsed.name || "";
-          document.getElementById('weight').value = parsed.weight || "";
-          document.getElementById('height').value = parsed.height || "";
-          document.getElementById('ivAtk').value = parsed.atk ?? "";
-          document.getElementById('ivDef').value = parsed.def ?? "";
-          document.getElementById('ivHp').value = parsed.hp ?? "";
+          const heightMatch = text.match(/(\d+(\.\d+)?)\s*(m)/i);
+          if (heightMatch) document.getElementById('height').value = heightMatch[1];
 
-          status.innerText = "✅ 自動辨識成功！已自動計算結果：";
-          calculateShowcase();
-        } catch (err) {
-          console.error("執行異常：", err);
-          status.innerText = "❌ 辨識失敗，請按 F12 開啟 Console 查看詳細錯誤。";
+          // 【優化 2】: 執行 IV 動態幾何掃描
+          scanIVBarsAdaptive(ctx, img.width, img.height);
+
+          status.innerText = "✅ 辨識完成！請確認數值無誤後點擊下方計算按鈕。";
+          
+          if(document.getElementById('weight').value && document.getElementById('height').value) {
+            calculateShowcase();
+          }
+
+        } catch (e) {
+          console.error(e);
+          status.innerText = "⚠️ 辨識過程發生問題，請嘗試手動輸入數值。";
         }
       };
+    }
+
+    // 【優化 2 & 3】: 動態螢幕比例適應與色彩掃描
+    function scanIVBarsAdaptive(ctx, w, h) {
+      const screenRatio = h / w;
+      
+      let cardTopRatio, cardBottomRatio;
+      
+      if (screenRatio > 2.1) {
+        cardTopRatio = 0.73; cardBottomRatio = 0.88;
+      } else if (screenRatio > 1.9) {
+        cardTopRatio = 0.71; cardBottomRatio = 0.875;
+      } else {
+        cardTopRatio = 0.66; cardBottomRatio = 0.85;
+      }
+
+      const cardTop = Math.floor(h * cardTopRatio);
+      const cardHeight = Math.floor(h * (cardBottomRatio - cardTopRatio));
+      
+      const yAtk = Math.floor(cardTop + cardHeight * 0.45);
+      const yDef = Math.floor(cardTop + cardHeight * 0.63);
+      const yHp  = Math.floor(cardTop + cardHeight * 0.81);
+
+      const barXStart = Math.floor(w * 0.12);
+      const barWidth  = Math.floor(w * 0.35);
+
+      document.getElementById('ivAtk').value = scanSingleBarIV(ctx, barXStart, yAtk, barWidth);
+      document.getElementById('ivDef').value = scanSingleBarIV(ctx, barXStart, yDef, barWidth);
+      document.getElementById('ivHp').value  = scanSingleBarIV(ctx, barXStart, yHp,  barWidth);
+    }
+
+    // 【優化 3】: 色彩容差升級與防呆邊緣處理
+    function scanSingleBarIV(ctx, startX, y, width) {
+      const imgData = ctx.getImageData(startX, y - 4, width, 8).data;
+      let filledPixels = 0;
+
+      for (let x = 0; x < width; x++) {
+        let isFilled = false;
+        for (let dy = 0; dy < 8; dy++) {
+          const idx = (dy * width + x) * 4;
+          const r = imgData[idx];
+          const g = imgData[idx + 1];
+          const b = imgData[idx + 2];
+
+          if (r > 180 && g < 190 && b < 140 && r > b + 50) {
+            isFilled = true;
+            break;
+          }
+        }
+        if (isFilled) filledPixels = x + 1;
+      }
+
+      if (filledPixels <= 2) return 0;
+      const ratio = filledPixels / width;
+
+      if (ratio >= 0.94) return 15;
+      if (ratio > 0.60 && ratio < 0.667) return 9; 
+      if (ratio > 0.88 && ratio < 0.94) return 14; 
+
+      return Math.min(15, Math.max(0, Math.round(ratio * 15)));
     }
 
     function calculateShowcase() {
@@ -222,30 +239,21 @@
       const def = parseInt(document.getElementById('ivDef').value) || 0;
       const hp = parseInt(document.getElementById('ivHp').value) || 0;
 
-      if (!w || !h) {
-        alert("請確認身高與體重數值！");
-        return;
-      }
+      if (!w || !h) return;
 
-      // 取得基準數據或自動估算
       const base = baseStatsDb[name] || { height: h / 1.15, weight: w / 1.15 };
 
-      // 1. 身高分數 (約佔 800 分)
       const heightRatio = h / base.height;
       const heightPoints = Math.round((heightRatio / 1.75) * 800);
 
-      // 2. 體重分數 (約佔 150 分)
       const weightRatio = w / base.weight;
       const weightPoints = Math.round((weightRatio / 1.75) * 150);
 
-      // 3. IV 分數 (約佔 50 分)
       const totalIv = atk + def + hp;
       const ivPoints = Math.round((totalIv / 45) * 50);
 
-      // 展示會 PT 總分
       const totalShowcasePoints = heightPoints + weightPoints + ivPoints;
 
-      // 體型判定
       let category = "一般 (Normal)";
       if (heightRatio >= 1.5) category = "巨型 (XXL)";
       else if (heightRatio <= 0.5) category = "微型 (XXS)";
