@@ -3,22 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pokémon GO 截圖自動辨識計算器 (純本地優化版)</title>
+  <title>Pokémon GO 截圖自動辨識計算器 (關鍵字錨點版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 引入 Tesseract.js 本地 OCR 引擎 -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-6 font-sans">
 
   <div class="max-w-xl mx-auto space-y-5">
     
-    <!-- 標題區 -->
     <header class="text-center py-3 border-b border-slate-800">
       <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">Pokémon GO 截圖辨識計算器</h1>
-      <p class="text-xs text-slate-400 mt-1">⚡ 本地極速優化版 ➔ 支援動態螢幕比例與裁切加速</p>
+      <p class="text-xs text-slate-400 mt-1">⚡ 關鍵字錨點尋找邏輯 ➔ 辨識準確率再提升</p>
     </header>
 
-    <!-- 圖片上傳卡片 -->
     <div class="bg-slate-800/80 border-2 border-dashed border-amber-500/40 rounded-2xl p-5 text-center hover:border-amber-400 transition-all shadow-lg">
       <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processScreenshot(this.files[0])">
       <label for="imageInput" class="cursor-pointer block space-y-2">
@@ -26,7 +23,6 @@
         <div class="text-sm font-semibold text-amber-300">點擊上傳隊長評價截圖</div>
         <div class="text-xs text-slate-400">依序辨識：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP</div>
       </label>
-      <!-- 進度條與狀態 -->
       <div id="statusText" class="text-xs text-amber-400 mt-3 font-medium min-h-[1.25rem]"></div>
     </div>
 
@@ -37,19 +33,16 @@
         <span class="text-[10px] text-amber-400/80">系統自動填寫 / 可手動微調</span>
       </div>
 
-      <!-- 1. 名稱 -->
       <div>
         <label class="block text-xs font-medium text-slate-300 mb-1">1. 寶可夢名稱</label>
         <input type="text" id="pokeName" placeholder="等待辨識..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
-        <!-- 2. 體重 -->
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">2. 體重 (kg)</label>
           <input type="number" id="weight" step="0.01" placeholder="例如：241.29" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
         </div>
-        <!-- 3. 身高 -->
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">3. 身高 (m)</label>
           <input type="number" id="height" step="0.01" placeholder="例如：2.82" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
@@ -75,7 +68,6 @@
         </div>
       </div>
 
-      <!-- 計算按鈕 -->
       <button onclick="calculateShowcase()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-md text-sm active:scale-[0.99]">
         🏆 計算 Showcase 展覽會 PT 總分
       </button>
@@ -110,7 +102,7 @@
       if (!file) return;
 
       const status = document.getElementById('statusText');
-      status.innerText = "⏳ 系統正在解析中 (優化加速中)...";
+      status.innerText = "⏳ 系統正在解析中 (關鍵字錨點掃描中)...";
 
       const img = new Image();
       img.src = URL.createObjectURL(file);
@@ -123,7 +115,7 @@
         ctx.drawImage(img, 0, 0);
 
         try {
-          // 【優化 1】: 預裁切圖片，只取上半部 60% 給 OCR 辨識
+          // 預裁切圖片，只取上半部 60% 給 OCR 辨識
           const ocrCanvas = document.createElement('canvas');
           ocrCanvas.width = img.width;
           ocrCanvas.height = img.height * 0.6;
@@ -137,25 +129,30 @@
           const text = ret.data.text;
           await worker.terminate();
 
-          // 解析名稱
-          const ignoreWords = ['攻擊', '防禦', '體重', '身高', '捕捉', '糖果', '星塵', '升級', '個體', '飛行', '水', '毒', '蟲', '惡'];
-          const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          // 核心優化 1：體重與身高使用「中文字錨點」擷取，防呆極大化
+          const weightMatch = text.match(/體重[\s\S]{0,30}?(\d+(\.\d+)?)\s*(kg|k9|k|k\s*g)/i);
+          if (weightMatch) document.getElementById('weight').value = weightMatch[1];
+
+          const heightMatch = text.match(/身高[\s\S]{0,30}?(\d+(\.\d+)?)\s*(m)/i);
+          if (heightMatch) document.getElementById('height').value = heightMatch[1];
+
+          // 核心優化 2：寶可夢名稱只在「體重」字眼出現之前尋找
+          const weightIndex = text.indexOf('體重');
+          const searchAreaForName = weightIndex !== -1 ? text.substring(0, weightIndex) : text;
+          
+          const ignoreWords = ['攻擊', '防禦', '捕捉', '糖果', '星塵', '升級', '個體', '飛行', '水', '毒', '蟲', '惡', 'CP', 'HP'];
+          const lines = searchAreaForName.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          
           for (let line of lines) {
             const clean = line.replace(/[^\u4e00-\u9fa5]/g, '');
+            // 一般寶可夢名字在 2~6 字之間
             if (clean.length >= 2 && clean.length <= 6 && !ignoreWords.some(w => clean.includes(w))) {
               document.getElementById('pokeName').value = clean;
               break;
             }
           }
 
-          // 解析體重與身高
-          const weightMatch = text.match(/(\d+(\.\d+)?)\s*(kg|k9|k)/i);
-          if (weightMatch) document.getElementById('weight').value = weightMatch[1];
-
-          const heightMatch = text.match(/(\d+(\.\d+)?)\s*(m)/i);
-          if (heightMatch) document.getElementById('height').value = heightMatch[1];
-
-          // 【優化 2】: 執行 IV 動態幾何掃描
+          // 執行 IV 動態幾何掃描
           scanIVBarsAdaptive(ctx, img.width, img.height);
 
           status.innerText = "✅ 辨識完成！請確認數值無誤後點擊下方計算按鈕。";
@@ -171,10 +168,8 @@
       };
     }
 
-    // 【優化 2 & 3】: 動態螢幕比例適應與色彩掃描
     function scanIVBarsAdaptive(ctx, w, h) {
       const screenRatio = h / w;
-      
       let cardTopRatio, cardBottomRatio;
       
       if (screenRatio > 2.1) {
@@ -200,7 +195,6 @@
       document.getElementById('ivHp').value  = scanSingleBarIV(ctx, barXStart, yHp,  barWidth);
     }
 
-    // 【優化 3】: 色彩容差升級與防呆邊緣處理
     function scanSingleBarIV(ctx, startX, y, width) {
       const imgData = ctx.getImageData(startX, y - 4, width, 8).data;
       let filledPixels = 0;
