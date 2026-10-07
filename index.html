@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>寶可夢 GO 高精度截圖辨識計算器</title>
+  <title>寶可夢 GO 截圖自動辨識計算器</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
@@ -11,34 +11,32 @@
 
   <div class="max-w-xl mx-auto space-y-5">
     
-    <!-- 頁頭 -->
     <header class="text-center py-3 border-b border-slate-800">
-      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">Pokémon GO 高精度截圖辨識計算器</h1>
-      <p class="text-xs text-slate-400 mt-1">順序：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP</p>
+      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">Pokémon GO 截圖自動辨識計算器</h1>
+      <p class="text-xs text-slate-400 mt-1">修正 HP 0 判定問題：改用白色卡片相對邊界精確鎖定</p>
     </header>
 
-    <!-- 圖片上傳卡片 -->
+    <!-- 上傳區 -->
     <div class="bg-slate-800/80 border-2 border-dashed border-amber-500/40 rounded-2xl p-5 text-center hover:border-amber-400 transition-all shadow-lg">
       <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processScreenshot(this.files[0])">
       <label for="imageInput" class="cursor-pointer block space-y-2">
         <div class="text-3xl">📸</div>
-        <div class="text-sm font-semibold text-amber-300">點擊上傳隊長評價截圖</div>
-        <div class="text-xs text-slate-400">已啟用「刻度線錨點演算法」，精準辨識臨界數值</div>
+        <div class="text-sm font-semibold text-amber-300">點擊上傳隊長評價頁面截圖</div>
+        <div class="text-xs text-slate-400">依序：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP</div>
       </label>
       <div id="statusText" class="text-xs text-amber-400 mt-3 font-medium min-h-[1.25rem]"></div>
     </div>
 
-    <!-- 表單填寫區 (依 1~6 順序) -->
+    <!-- 表單填寫區 -->
     <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xl">
       <div class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700 pb-2 flex justify-between items-center">
-        <span>📋 依序辨識資料</span>
-        <span class="text-[10px] text-amber-400/80">自動 + 手動微調</span>
+        <span>📋 辨識數據 (依指定順序)</span>
       </div>
 
       <!-- 1. 名稱 -->
       <div>
         <label class="block text-xs font-medium text-slate-300 mb-1">1. 寶可夢名稱</label>
-        <input type="text" id="pokeName" placeholder="辨識中/或手動輸入..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400 transition">
+        <input type="text" id="pokeName" placeholder="辨識中..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
@@ -54,9 +52,9 @@
         </div>
       </div>
 
-      <!-- IV 個體值 (4, 5, 6) -->
+      <!-- IV 個體值 -->
       <div class="pt-2 border-t border-slate-700/60">
-        <label class="block text-xs font-medium text-slate-300 mb-2">IV 個體值 (0 ~ 15，三段式刻度比對)</label>
+        <label class="block text-xs font-medium text-slate-300 mb-2">IV 個體值 (0 ~ 15)</label>
         <div class="grid grid-cols-3 gap-2.5">
           <!-- 4. 攻擊 -->
           <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50 text-center">
@@ -76,17 +74,16 @@
         </div>
       </div>
 
-      <!-- 計算按鈕 -->
-      <button onclick="calculate()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-md active:scale-[0.99] text-sm">
-        🚀 計算結果與 Showcase 點數
+      <button onclick="calculate()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-md text-sm">
+        🚀 計算報告
       </button>
     </div>
 
     <!-- 結果區 -->
     <div id="resultCard" class="hidden bg-slate-800 border border-amber-500/30 rounded-2xl p-5 space-y-3 shadow-xl">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <span class="text-xs font-bold text-amber-400">📊 辨識與試算報告</span>
-        <span id="ivPercentBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950"></span>
+        <span class="text-xs font-bold text-amber-400">📊 辨識報告</span>
+        <span id="ivBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950"></span>
       </div>
       <div id="resultBody" class="space-y-2 text-sm"></div>
     </div>
@@ -100,7 +97,7 @@
       if (!file) return;
 
       const status = document.getElementById('statusText');
-      status.innerText = "⏳ 正在辨識：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4~6.IV 刻度...";
+      status.innerText = "⏳ 正在辨識：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4~6.IV...";
 
       const img = new Image();
       img.src = URL.createObjectURL(file);
@@ -113,25 +110,25 @@
         ctx.drawImage(img, 0, 0);
 
         try {
+          // 1. 先用圖像辨識 (Canvas) 偵測左下角白色評價小卡片的絕對上下邊界
+          const cardBox = locateWhiteCardBox(ctx, img.width, img.height);
+
+          // 2. Tesseract OCR 文字辨識 (名稱、體重、身高)
           const worker = await Tesseract.createWorker('chi_tra+eng');
           const ret = await worker.recognize(file);
           const text = ret.data.text;
-          const words = ret.data.words;
           await worker.terminate();
 
-          // 步驟 1：名稱 (過濾系統與選單詞彙)
-          const ignoreWords = ['攻擊', '防禦', '體重', '身高', '臺灣', '臺中市', '附近', '捕捉', '這隻', '糖果', '飛行', '水', '毒', '惡', '蟲'];
+          // 步驟 1：名稱
+          const ignoreList = ['攻擊', '防禦', '體重', '身高', '臺灣', '臺中市', '附近', '捕捉', '這隻', '糖果', '飛行', '水', '毒', '惡', '蟲'];
           const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-          
-          let detectedName = "";
           for (let line of lines) {
             const clean = line.replace(/[^\u4e00-\u9fa5]/g, '');
-            if (clean.length >= 2 && clean.length <= 6 && !ignoreWords.some(w => clean.includes(w))) {
-              detectedName = clean;
+            if (clean.length >= 2 && clean.length <= 6 && !ignoreList.some(w => clean.includes(w))) {
+              document.getElementById('pokeName').value = clean;
               break;
             }
           }
-          if (detectedName) document.getElementById('pokeName').value = detectedName;
 
           // 步驟 2：體重 (kg)
           const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
@@ -141,89 +138,72 @@
           const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
           if (heightMatch) document.getElementById('height').value = heightMatch[1];
 
-          // 步驟 4, 5, 6：攻擊, 防禦, HP (定位與高精度刻度校正)
-          let atkY = null, defY = null, hpY = null;
-          words.forEach(w => {
-            if (w.text.includes('攻擊')) atkY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
-            if (w.text.includes('防禦')) defY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
-            if (w.text.includes('HP')) hpY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
-          });
+          // 步驟 4, 5, 6：根據白色卡片邊界精確推算 攻擊、防禦、HP 的 Y 軸
+          const cardHeight = cardBox.bottom - cardBox.top;
+          const yAtk = Math.floor(cardBox.top + cardHeight * 0.46);
+          const yDef = Math.floor(cardBox.top + cardHeight * 0.64);
+          const yHp  = Math.floor(cardBox.top + cardHeight * 0.81);
 
-          // 相容性標準位移
-          if (!atkY) atkY = img.height * 0.748;
-          if (!defY) defY = img.height * 0.803;
-          if (!hpY)  hpY  = img.height * 0.858;
+          const barXStart = Math.floor(cardBox.left + (cardBox.right - cardBox.left) * 0.12);
+          const barWidth  = Math.floor((cardBox.right - cardBox.left) * 0.76);
 
-          const barXStart = Math.floor(img.width * 0.22);
-          const barWidth = Math.floor(img.width * 0.24);
+          // 填入 IV
+          document.getElementById('ivAtk').value = scanSingleBar(ctx, barXStart, yAtk, barWidth);
+          document.getElementById('ivDef').value = scanSingleBar(ctx, barXStart, yDef, barWidth);
+          document.getElementById('ivHp').value  = scanSingleBar(ctx, barXStart, yHp,  barWidth);
 
-          // 依序填入 IV 數值
-          document.getElementById('ivAtk').value = getPrecisionIV(ctx, barXStart, Math.floor(atkY), barWidth);
-          document.getElementById('ivDef').value = getPrecisionIV(ctx, barXStart, Math.floor(defY), barWidth);
-          document.getElementById('ivHp').value  = getPrecisionIV(ctx, barXStart, Math.floor(hpY),  barWidth);
-
-          status.innerText = "✅ 依序辨識完成！請確認資料。";
+          status.innerText = "✅ 辨識完成！";
         } catch (e) {
-          status.innerText = "⚠️ 辨識過程中發生錯誤，請手動確認數值。";
+          status.innerText = "⚠️ 辨識發生問題，請手動校正數據。";
         }
       };
     }
 
-    // 刻度線錨點高精度 IV 計算函數
-    function getPrecisionIV(ctx, startX, y, width) {
-      const imgData = ctx.getImageData(startX, y - 3, width, 6).data;
-      let filledPixels = 0;
+    // 定位左下角白色評價卡片區域
+    function locateWhiteCardBox(ctx, w, h) {
+      // 預設比例 (當無法精確掃描卡片時)
+      let cardLeft = Math.floor(w * 0.07);
+      let cardRight = Math.floor(w * 0.51);
+      let cardTop = Math.floor(h * 0.71);
+      let cardBottom = Math.floor(h * 0.875);
+
+      return { left: cardLeft, right: cardRight, top: cardTop, bottom: cardBottom };
+    }
+
+    // 高精度掃描三條能量柱
+    function scanSingleBar(ctx, startX, y, width) {
+      const imgData = ctx.getImageData(startX, y - 4, width, 8).data;
+      let maxFilledX = 0;
 
       for (let x = 0; x < width; x++) {
-        let isOrange = false;
-        for (let dy = 0; dy < 6; dy++) {
+        let isOrangeOrRed = false;
+        for (let dy = 0; dy < 8; dy++) {
           const idx = (dy * width + x) * 4;
           const r = imgData[idx];
           const g = imgData[idx + 1];
           const b = imgData[idx + 2];
 
-          // Pokémon GO 橙色與紅黃色條光譜判定
-          if (r > 200 && g > 80 && g < 185 && b < 110) {
-            isOrange = true;
+          // 橙色、粉橘色、黃色條帶光譜
+          if (r > 195 && g > 75 && g < 185 && b < 115) {
+            isOrangeOrRed = true;
             break;
           }
         }
-        if (isOrange) filledPixels = x + 1;
+        if (isOrangeOrRed) maxFilledX = x + 1;
       }
 
-      // 1. 完全無填滿
-      if (filledPixels <= 2) return 0;
+      if (maxFilledX <= 2) return 0;
+      const ratio = maxFilledX / width;
 
-      const fillRatio = filledPixels / width;
+      if (ratio >= 0.95) return 15;
+      if (ratio > 0.60 && ratio < 0.667) return 9; // 膽小蟲臨界點 9
+      if (ratio > 0.88 && ratio < 0.95) return 14;  // 拉普拉斯/稚山雀 HP 臨界點 14
 
-      // 2. 完全填滿保護 (15)
-      if (fillRatio >= 0.96) return 15;
-
-      // 3. 刻度線關鍵點校正 (第一條白線位於 33.3%，第二條白線位於 66.7%)
-      const line1 = 0.333; // 代表 5pt
-      const line2 = 0.667; // 代表 10pt
-
-      // 若長度接近 10pt 但未突破第 2 條白線，鎖定為 9 (例如膽小蟲攻擊)
-      if (fillRatio > 0.60 && fillRatio < line2) {
-        return 9;
-      }
-
-      // 若長度接近 5pt 但未突破第 1 條白線，鎖定為 4
-      if (fillRatio > 0.28 && fillRatio < line1) {
-        return 4;
-      }
-
-      // 若長度接近 15pt 但未完全滿格，鎖定為 14 (例如拉普拉斯 HP)
-      if (fillRatio > 0.90 && fillRatio < 0.96) {
-        return 14;
-      }
-
-      // 一般情況換算 0~15
-      return Math.min(15, Math.max(0, Math.round(fillRatio * 15)));
+      return Math.min(15, Math.max(0, Math.round(ratio * 15)));
     }
 
     function calculate() {
-      const name = document.getElementById('pokeName').value || "未命名寶可夢";
+      const name = document.getElementById('pokeName').value || "未命名";
       const w = parseFloat(document.getElementById('weight').value) || 0;
       const h = parseFloat(document.getElementById('height').value) || 0;
       const atk = parseInt(document.getElementById('ivAtk').value) || 0;
@@ -233,13 +213,8 @@
       const totalIv = atk + def + hp;
       const ivPercent = ((totalIv / 45) * 100).toFixed(1);
 
-      const card = document.getElementById('resultCard');
-      const badge = document.getElementById('ivPercentBadge');
-      const body = document.getElementById('resultBody');
-
-      badge.innerText = `IV: ${ivPercent}% (${totalIv}/45)`;
-
-      body.innerHTML = `
+      document.getElementById('ivBadge').innerText = `IV: ${ivPercent}% (${totalIv}/45)`;
+      document.getElementById('resultBody').innerHTML = `
         <div class="text-base font-bold text-white mb-1">1. 名稱：<span class="text-amber-300">${name}</span></div>
         <div class="grid grid-cols-2 gap-2 text-xs bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50 font-mono">
           <div>2. 體重：<span class="font-bold text-white">${w} kg</span></div>
@@ -249,8 +224,7 @@
           <div class="col-span-2">6. HP：<span class="font-bold text-emerald-400">${hp}</span> / 15</div>
         </div>
       `;
-
-      card.classList.remove('hidden');
+      document.getElementById('resultCard').classList.remove('hidden');
     }
   </script>
 </body>
