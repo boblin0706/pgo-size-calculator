@@ -3,27 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI 截圖辨識計算器</title>
+  <title>Pokémon GO Showcase 展覽會分數計算器 (AI 自動填表版)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-6 font-sans">
 
   <div class="max-w-xl mx-auto space-y-5">
     
-    <!-- 標題 -->
+    <!-- 標題區 -->
     <header class="text-center py-3 border-b border-slate-800">
-      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">AI 視覺辨識計算器</h1>
-      <p class="text-xs text-slate-400 mt-1">串接 Gemini API：100% 精準判斷名字、體型與 IV (0-15)</p>
+      <h1 class="text-xl md:text-2xl font-bold text-amber-400 tracking-wide">Pokémon GO Showcase 點數計算器</h1>
+      <p class="text-xs text-slate-400 mt-1">AI 截圖辨識 ➔ 自動對照圖鑑算出 Showcase PT 總分</p>
     </header>
 
     <!-- API Key 設定區 -->
     <div class="bg-slate-800/90 border border-amber-500/30 rounded-2xl p-4 space-y-2">
-      <label class="block text-xs font-bold text-amber-300">🔑 請輸入你的 Gemini API Key：</label>
+      <label class="block text-xs font-bold text-amber-300">🔑 Gemini API Key 設定：</label>
       <div class="flex gap-2">
-        <input type="password" id="apiKeyInput" placeholder="貼上 AI Studio 申請的 API Key (AIzaSy...)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-400 font-mono">
+        <input type="password" id="apiKeyInput" placeholder="貼上 API Key (AIzaSy...)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-400 font-mono">
         <button onclick="saveApiKey()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition">儲存 Key</button>
       </div>
-      <p class="text-[11px] text-slate-400">💡 Key 只會儲存在你的瀏覽器本機 (localStorage)，不會上傳至任何伺服器。</p>
     </div>
 
     <!-- 圖片上傳區 -->
@@ -31,34 +30,34 @@
       <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processImageWithGemini(this.files[0])">
       <label for="imageInput" class="cursor-pointer block space-y-2">
         <div class="text-3xl">📸</div>
-        <div class="text-sm font-semibold text-amber-300">點擊上傳寶可夢評價截圖</div>
-        <div class="text-xs text-slate-400">AI 將依序自動填入：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP</div>
+        <div class="text-sm font-semibold text-amber-300">上傳寶可夢評價截圖</div>
+        <div class="text-xs text-slate-400">自動辨識：1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP</div>
       </label>
       <div id="statusText" class="text-xs text-amber-400 mt-3 font-medium min-h-[1.25rem]"></div>
     </div>
 
-    <!-- 表單填寫區 -->
+    <!-- 數據表單 -->
     <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-5 space-y-4 shadow-xl">
       <div class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700 pb-2">
-        📋 數據填寫順序 (1 ~ 6)
+        📋 數據表單 (1 ~ 6 順序)
       </div>
 
       <!-- 1. 名稱 -->
       <div>
         <label class="block text-xs font-medium text-slate-300 mb-1">1. 寶可夢名稱</label>
-        <input type="text" id="pokeName" placeholder="例如：膽小蟲、拉普拉斯" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
+        <input type="text" id="pokeName" placeholder="例如：拉普拉斯、膽小蟲" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-amber-300 focus:outline-none focus:border-amber-400">
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <!-- 2. 體重 -->
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">2. 體重 (kg)</label>
-          <input type="number" id="weight" step="0.01" placeholder="例如：16.3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
+          <input type="number" id="weight" step="0.01" placeholder="例如：241.29" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
         </div>
         <!-- 3. 身高 -->
         <div>
           <label class="block text-xs font-medium text-slate-300 mb-1">3. 身高 (m)</label>
-          <input type="number" id="height" step="0.01" placeholder="例如：0.62" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
+          <input type="number" id="height" step="0.01" placeholder="例如：2.82" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-400">
         </div>
       </div>
 
@@ -84,24 +83,37 @@
         </div>
       </div>
 
-      <button onclick="calculate()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-md text-sm">
-        🚀 計算結果與報告
+      <!-- 計算按鈕 -->
+      <button onclick="calculateShowcase()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all shadow-md text-sm active:scale-[0.99]">
+        🏆 計算 Showcase 展覽會 PT 總分
       </button>
     </div>
 
-    <!-- 結果展現區 -->
-    <div id="resultCard" class="hidden bg-slate-800 border border-amber-500/30 rounded-2xl p-5 space-y-3 shadow-xl">
+    <!-- 結果展現卡片 (PGOXXL 樣式) -->
+    <div id="resultCard" class="hidden bg-slate-800 border border-amber-500/40 rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <span class="text-xs font-bold text-amber-400">📊 辨識報告</span>
-        <span id="ivBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950"></span>
+        <span class="text-xs font-bold text-amber-400">🏆 展示會分數計算報告</span>
+        <span id="badgeCategory" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-slate-950"></span>
       </div>
-      <div id="resultBody" class="space-y-2 text-sm"></div>
+
+      <div id="resultBody" class="space-y-3"></div>
     </div>
 
   </div>
 
   <script>
-    // 網頁載入時自動讀取已儲存的 API Key
+    // 常用寶可夢官方基準數據（平均身高 m，平均體重 kg）
+    const baseStatsDb = {
+      "拉普拉斯": { height: 2.5, weight: 220.0 },
+      "膽小蟲": { height: 0.5, weight: 12.0 },
+      "稚山雀": { height: 0.2, weight: 1.8 },
+      "臭泥": { height: 0.9, weight: 30.0 },
+      "懶人獺": { height: 0.8, weight: 24.0 },
+      "請假王": { height: 2.0, weight: 130.5 },
+      "皮卡丘": { height: 0.4, weight: 6.0 },
+      "卡比獸": { height: 2.1, weight: 460.0 }
+    };
+
     window.onload = () => {
       const savedKey = localStorage.getItem('gemini_api_key');
       if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
@@ -114,7 +126,7 @@
         return;
       }
       localStorage.setItem('gemini_api_key', key);
-      alert("✅ API Key 已成功儲存在本機！");
+      alert("✅ API Key 已成功儲存！");
     }
 
     async function processImageWithGemini(file) {
@@ -122,31 +134,29 @@
 
       const apiKey = localStorage.getItem('gemini_api_key') || document.getElementById('apiKeyInput').value.trim();
       if (!apiKey) {
-        alert("請先輸入並儲存 Gemini API Key！");
+        alert("請先設定 Gemini API Key！");
         return;
       }
 
       const status = document.getElementById('statusText');
-      status.innerText = "🤖 正在傳送至 Gemini AI 視覺模型進行分析...";
+      status.innerText = "🤖 AI 正在精準辨識資料中...";
 
-      // 將圖片轉為 Base64 格式
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
         const base64Data = reader.result.split(',')[1];
 
-        const prompt = `你是一個專業的 Pokémon GO 截圖資料分析師。
-請仔細分析這張寶可夢評價截圖，嚴格辨識以下數據：
-1. 寶可夢中文名稱 (例如：拉普拉斯、膽小蟲、稚山雀、臭泥)
+        const prompt = `分析這張 Pokémon GO 截圖，嚴格讀取：
+1. 中文名稱 (如：拉普拉斯、膽小蟲、稚山雀、臭泥)
 2. 體重 (kg，數字)
 3. 身高 (m，數字)
-4. 攻擊 IV (0-15 的整數，每條被兩條白線分成三格，第一格滿為5，第二格滿為10，全滿為15。請仔細看橘黃色條長度，例如膽小蟲沒完全碰到第二條白線是9)
-5. 防禦 IV (0-15 的整數)
-6. HP IV (0-15 的整數)
+4. 攻擊 IV (0-15 整數，第一格滿5，第二格滿10，全滿15。膽小蟲未觸及第二條白線為9)
+5. 防禦 IV (0-15 整數)
+6. HP IV (0-15 整數)
 
-請嚴格只回傳 JSON 格式，絕對不要有任何其他文字、Markdown 標籤或說明：
+請只回傳 JSON：
 {
-  "name": "寶可夢名稱",
+  "name": "名稱",
   "weight": 0.0,
   "height": 0.0,
   "atk": 0,
@@ -170,12 +180,9 @@
 
           const data = await response.json();
           const rawText = data.candidates[0].content.parts[0].text;
-          
-          // 清理 JSON 字串
           const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
           const parsed = JSON.parse(cleanJson);
 
-          // 依序填入表單 (1.名稱 ➔ 2.體重 ➔ 3.身高 ➔ 4.攻擊 ➔ 5.防禦 ➔ 6.HP)
           document.getElementById('pokeName').value = parsed.name || "";
           document.getElementById('weight').value = parsed.weight || "";
           document.getElementById('height').value = parsed.height || "";
@@ -183,37 +190,94 @@
           document.getElementById('ivDef').value = parsed.def ?? "";
           document.getElementById('ivHp').value = parsed.hp ?? "";
 
-          status.innerText = "✅ AI 辨識成功！請核對資料後點擊計算。";
+          status.innerText = "✅ 自動辨識成功！請點擊下方按鈕計算 PT 總分。";
+          calculateShowcase(); // 自動執行計算
         } catch (err) {
           console.error(err);
-          status.innerText = "❌ 辨識失敗，請檢查 API Key 是否正確或圖片品質。";
+          status.innerText = "❌ 辨識失敗，請檢查 API Key 或圖片。";
         }
       };
     }
 
-    function calculate() {
-      const name = document.getElementById('pokeName').value || "未命名";
+    // PGOXXL Showcase 點數計算邏輯
+    function calculateShowcase() {
+      const name = document.getElementById('pokeName').value.trim() || "寶可夢";
       const w = parseFloat(document.getElementById('weight').value) || 0;
       const h = parseFloat(document.getElementById('height').value) || 0;
       const atk = parseInt(document.getElementById('ivAtk').value) || 0;
       const def = parseInt(document.getElementById('ivDef').value) || 0;
       const hp = parseInt(document.getElementById('ivHp').value) || 0;
 
-      const totalIv = atk + def + hp;
-      const ivPercent = ((totalIv / 45) * 100).toFixed(1);
+      if (!w || !h) {
+        alert("請確認身高與體重數值！");
+        return;
+      }
 
-      document.getElementById('ivBadge').innerText = `IV: ${ivPercent}% (${totalIv}/45)`;
-      document.getElementById('resultBody').innerHTML = `
-        <div class="text-base font-bold text-white mb-1">1. 名稱：<span class="text-amber-300">${name}</span></div>
-        <div class="grid grid-cols-2 gap-2 text-xs bg-slate-900/60 p-2.5 rounded-lg border border-slate-700/50 font-mono">
-          <div>2. 體重：<span class="font-bold text-white">${w} kg</span></div>
-          <div>3. 身高：<span class="font-bold text-white">${h} m</span></div>
-          <div>4. 攻擊：<span class="font-bold text-rose-400">${atk}</span> / 15</div>
-          <div>5. 防禦：<span class="font-bold text-sky-400">${def}</span> / 15</div>
-          <div class="col-span-2">6. HP：<span class="font-bold text-emerald-400">${hp}</span> / 15</div>
+      // 取得該寶可夢的基準身高/體重（若沒有預設值，採用通用比率估算）
+      const base = baseStatsDb[name] || { height: h / 1.15, weight: w / 1.15 };
+
+      // 1. 身高得分 (滿分約 800 PT)
+      const heightRatio = h / base.height;
+      const heightPoints = Math.round((heightRatio / 1.75) * 800);
+
+      // 2. 體重得分 (滿分約 150 PT)
+      const weightRatio = w / base.weight;
+      const weightPoints = Math.round((weightRatio / 1.75) * 150);
+
+      // 3. IV 得分 (滿分 50 PT)
+      const totalIv = atk + def + hp;
+      const ivPoints = Math.round((totalIv / 45) * 50);
+
+      // 總得分 (PT)
+      const totalShowcasePoints = heightPoints + weightPoints + ivPoints;
+
+      // 體型級別判定
+      let category = "一般 (Normal)";
+      if (heightRatio >= 1.5) category = "巨型 (XXL)";
+      else if (heightRatio <= 0.5) category = "微型 (XXS)";
+
+      // 呈現結果
+      const card = document.getElementById('resultCard');
+      const badge = document.getElementById('badgeCategory');
+      const body = document.getElementById('resultBody');
+
+      badge.innerText = category;
+      badge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold ${
+        category.includes('XXL') ? 'bg-amber-400 text-slate-950' : 'bg-slate-700 text-slate-300'
+      }`;
+
+      body.innerHTML = `
+        <div class="flex justify-between items-baseline border-b border-slate-700/80 pb-3">
+          <div>
+            <div class="text-xs text-slate-400">寶可夢名稱</div>
+            <div class="text-lg font-bold text-white">${name}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-slate-400">Showcase 估算總分</div>
+            <div class="text-2xl font-black text-amber-400 font-mono">${totalShowcasePoints} <span class="text-xs font-normal">PT</span></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50">
+            <div class="text-slate-400 mb-1">📏 身高得分</div>
+            <div class="font-bold text-white font-mono text-sm">${heightPoints} PT</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${h} m</div>
+          </div>
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50">
+            <div class="text-slate-400 mb-1">⚖️ 體重得分</div>
+            <div class="font-bold text-white font-mono text-sm">${weightPoints} PT</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${w} kg</div>
+          </div>
+          <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-700/50">
+            <div class="text-slate-400 mb-1">🌟 IV 得分</div>
+            <div class="font-bold text-amber-300 font-mono text-sm">${ivPoints} PT</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">${totalIv}/45</div>
+          </div>
         </div>
       `;
-      document.getElementById('resultCard').classList.remove('hidden');
+
+      card.classList.remove('hidden');
     }
   </script>
 </body>
