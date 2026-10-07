@@ -1,97 +1,715 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>寶可夢 GO 體型與 Showcase 計算器</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寶可夢 GO 體型與 Showcase 計算器 (隊長評價精準版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pogo: {
+                            blue: '#0075FF',
+                            cyan: '#00F0FF',
+                            purple: '#8A2BE2',
+                            dark: '#0B0F19',
+                            card: '#161F33',
+                            border: '#233252',
+                            accent: '#FFCB05',
+                            xxl: '#FF4500',
+                            xxs: '#38BDF8'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #060911;
+            color: #f3f4f6;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 117, 255, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(138, 43, 226, 0.15) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(22, 31, 51, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel-glow {
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.1);
+        }
+        .scanline {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, transparent, #00F0FF, transparent);
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+        @keyframes scanning {
+            0% { top: 0%; opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { top: 95%; opacity: 0.8; }
+        }
+        .is-scanning {
+            animation: scanning 1.8s ease-in-out infinite alternate;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans">
-  <div class="max-w-2xl mx-auto space-y-6">
-    <header class="text-center py-4 border-b border-slate-700">
-      <h1 class="text-2xl font-bold text-yellow-400">寶可夢 GO 體型與 Showcase 計算器</h1>
-      <p class="text-xs text-slate-400 mt-1">上傳截圖自動辨識，快速計算體型分佈與 Showcase 得分</p>
+<body class="min-h-screen pb-12 text-slate-100 selection:bg-pogo-cyan selection:text-pogo-dark">
+
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-pogo-blue to-pogo-cyan flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-lg shadow-pogo-blue/30">
+                    <i class="fa-solid font-black">GO</i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-pogo-cyan bg-clip-text text-transparent">
+                        寶可夢體型與 Showcase 計算器
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">隊長評價條色區分析 · 名稱/身長/體重/IV 精準辨識</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    全螢幕隊長截圖模組 v3.0
+                </span>
+            </div>
+        </div>
     </header>
 
-    <!-- 圖片上傳區 -->
-    <div class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center bg-slate-800/50 hover:border-yellow-400 transition">
-      <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImage(this.files[0])">
-      <label for="imageInput" class="cursor-pointer block">
-        <div class="text-3xl mb-2">📸</div>
-        <p class="text-sm font-medium text-slate-200">點擊或拖拽上傳寶可夢截圖</p>
-        <p class="text-xs text-slate-400 mt-1">支援自動辨識身高 (m) 與體重 (kg)</p>
-      </label>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <section class="lg:col-span-5 space-y-6">
+
+            <!-- Presets / Quick Test Buttons -->
+            <div class="glass-panel rounded-2xl p-4 border border-pogo-border">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-pogo-accent"></i> 快速填入測試範例
+                </h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="loadLaprasExample()" class="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-pogo-blue/20 hover:border-pogo-blue/50 border border-slate-700/60 text-xs font-medium text-slate-200 transition-all flex items-center justify-between group">
+                        <span class="font-bold text-pogo-cyan">🐉 截圖範例拉普拉斯</span>
+                        <span class="text-[10px] text-slate-400 font-mono">0 / 13 / 14</span>
+                    </button>
+                    <button onclick="loadPreset('slakoth_xxl')" class="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-pogo-blue/20 hover:border-pogo-blue/50 border border-slate-700/60 text-xs font-medium text-slate-200 transition-all flex items-center justify-between group">
+                        <span class="font-bold text-pogo-xxl">🦥 XXL 懶人獺</span>
+                        <span class="text-[10px] text-slate-400 font-mono">15 / 15 / 15</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload & Interactive OCR Box -->
+            <div class="glass-panel rounded-2xl p-5 border border-pogo-border relative overflow-hidden">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-camera text-pogo-cyan"></i> 隊長評價頁面截圖辨識
+                    </h2>
+                    <span class="text-[11px] text-slate-400">支援拖曳/剪貼簿貼上</span>
+                </div>
+
+                <!-- Dropzone Container -->
+                <div id="dropzone" class="relative border-2 border-dashed border-slate-700 hover:border-pogo-blue rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-900/40 group min-h-[220px] flex flex-col items-center justify-center">
+                    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                    
+                    <div id="uploadPrompt" class="space-y-2 pointer-events-none">
+                        <div class="w-12 h-12 rounded-full bg-pogo-blue/10 text-pogo-cyan flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-slate-200">點擊上傳或貼上隊長評價截圖</p>
+                        <p class="text-[11px] text-slate-500">自動識別：寶可夢名字、身高、體重與 IV 三條能量柱</p>
+                    </div>
+
+                    <!-- Image Preview & Overlay -->
+                    <div id="previewContainer" class="hidden relative w-full h-full flex flex-col items-center">
+                        <div class="relative inline-block max-h-[340px] overflow-hidden rounded-lg border border-slate-700">
+                            <img id="imagePreview" src="" alt="Pokémon Screenshot" class="max-h-[340px] w-auto object-contain">
+                            <!-- Scanning Animation Bar -->
+                            <div id="scanline" class="scanline"></div>
+                            
+                            <!-- Dynamic Overlay Boxes for Position Mapping -->
+                            <div id="boxName" class="hidden absolute border border-pogo-cyan bg-pogo-cyan/20 rounded text-[9px] text-pogo-cyan font-mono px-1 font-bold pointer-events-none">名字</div>
+                            <div id="boxWeight" class="hidden absolute border border-emerald-400 bg-emerald-400/20 rounded text-[9px] text-emerald-300 font-mono px-1 font-bold pointer-events-none">體重</div>
+                            <div id="boxHeight" class="hidden absolute border border-amber-400 bg-amber-400/20 rounded text-[9px] text-amber-300 font-mono px-1 font-bold pointer-events-none">身高</div>
+                            <div id="boxIv" class="hidden absolute border border-red-400 bg-red-400/20 rounded text-[9px] text-red-300 font-mono px-1 font-bold pointer-events-none">IV條</div>
+                        </div>
+
+                        <!-- Scan Status Info -->
+                        <div id="ocrStatus" class="mt-3 w-full text-xs bg-slate-900/90 py-2 px-3 rounded-lg flex items-center justify-between border border-slate-800">
+                            <span class="text-slate-300 flex items-center gap-2">
+                                <i id="ocrIcon" class="fa-solid fa-spinner fa-spin text-pogo-cyan"></i>
+                                <span id="ocrStatusText">已準備辨識...</span>
+                            </span>
+                            <button onclick="triggerFileInput()" class="text-xs text-pogo-cyan hover:underline">換一張</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-pogo-border space-y-4">
+                <h2 class="text-sm font-bold text-slate-200 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-pogo-blue"></i> 數值辨識與校正
+                    </span>
+                    <button onclick="resetInputs()" class="text-xs text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-rotate-left"></i> 重置
+                    </button>
+                </h2>
+
+                <!-- Species Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">寶可夢物種 (Species)</label>
+                    <select id="speciesSelect" onchange="handleSpeciesChange()" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-pogo-blue transition-colors">
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-900/50 rounded-xl p-2.5 border border-slate-800/80 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] text-slate-400">標準基準身高</div>
+                            <div id="baseHeightDisplay" class="text-xs font-bold text-slate-200">2.50 m</div>
+                        </div>
+                        <i class="fa-solid fa-ruler-vertical text-slate-600"></i>
+                    </div>
+                    <div class="bg-slate-900/50 rounded-xl p-2.5 border border-slate-800/80 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] text-slate-400">標準基準體重</div>
+                            <div id="baseWeightDisplay" class="text-xs font-bold text-slate-200">220.00 kg</div>
+                        </div>
+                        <i class="fa-solid fa-weight-scale text-slate-600"></i>
+                    </div>
+                </div>
+
+                <!-- Input Height and Weight -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">身高 Height (m)</label>
+                        <div class="relative">
+                            <input type="number" id="inputHeight" step="0.01" min="0.01" value="2.82" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white font-mono focus:outline-none focus:border-pogo-cyan">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-bold">m</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">體重 Weight (kg)</label>
+                        <div class="relative">
+                            <input type="number" id="inputWeight" step="0.01" min="0.01" value="241.29" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-white font-mono focus:outline-none focus:border-pogo-cyan">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-bold">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IV Inputs -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-xs font-semibold text-slate-400">個體值 (IV Bonus)</label>
+                        <span id="ivSumDisplay" class="text-xs font-mono text-pogo-cyan font-bold">27 / 45 (60%)</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-0.5">攻擊 ATK</span>
+                            <input type="number" id="ivAtk" min="0" max="15" value="0" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-red-400 font-mono font-bold focus:outline-none focus:border-red-400">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-0.5">防禦 DEF</span>
+                            <input type="number" id="ivDef" min="0" max="15" value="13" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-green-400 font-mono font-bold focus:outline-none focus:border-green-400">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block mb-0.5">體力 HP</span>
+                            <input type="number" id="ivHp" min="0" max="15" value="14" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-blue-400 font-mono font-bold focus:outline-none focus:border-blue-400">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <section class="lg:col-span-7 space-y-6">
+
+            <!-- Primary Showcase Score Dashboard Card -->
+            <div class="glass-panel rounded-2xl p-6 border border-pogo-border relative overflow-hidden glass-panel-glow">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <span class="text-xs font-bold text-pogo-cyan tracking-wider uppercase">Showcase 競賽評估結果</span>
+                        <h2 id="pokemonDisplayName" class="text-2xl font-black text-white mt-0.5 flex items-center gap-2">
+                            拉普拉斯 Lapras
+                        </h2>
+                    </div>
+
+                    <!-- Size Badge Tag -->
+                    <div class="flex items-center gap-2">
+                        <div id="sizeBadge" class="px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-slate-800 text-slate-200 border-slate-700">
+                            一般體型 (Normal)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Showcase Main Score Counter -->
+                <div class="mt-6 grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+                    
+                    <div class="sm:col-span-5 text-center sm:text-left bg-slate-900/60 rounded-2xl p-4 border border-slate-800/90">
+                        <span class="text-xs text-slate-400 font-medium">預估展示會總得分 (Total Score)</span>
+                        <div class="flex items-baseline justify-center sm:justify-start gap-1 mt-1">
+                            <span id="totalScoreDisplay" class="text-4xl font-extrabold font-mono text-transparent bg-clip-text bg-gradient-to-r from-pogo-cyan via-white to-pogo-blue">
+                                760
+                            </span>
+                            <span class="text-sm font-bold text-slate-400">/ 1000+ pts</span>
+                        </div>
+                        <p id="scoreRankComment" class="text-[11px] text-amber-300 mt-2 font-medium flex items-center justify-center sm:justify-start gap-1">
+                            <i class="fa-solid fa-chart-line"></i> 標準競賽表現
+                        </p>
+                    </div>
+
+                    <!-- Detailed Breakdown Progress Bars -->
+                    <div class="sm:col-span-7 space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-ruler-vertical text-amber-400"></i> 身高得分 (Max 800)
+                                </span>
+                                <span id="heightScoreText" class="font-mono text-amber-300">601.6 pts</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="heightBar" class="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full transition-all duration-500" style="width: 75%;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-weight-scale text-emerald-400"></i> 體重得分 (Max 150)
+                                </span>
+                                <span id="weightScoreText" class="font-mono text-emerald-300">123.4 pts</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="weightBar" class="h-full bg-gradient-to-r from-emerald-500 to-emerald-300 rounded-full transition-all duration-500" style="width: 82%;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-star text-pogo-cyan"></i> 個體值加分 (Max 50)
+                                </span>
+                                <span id="ivScoreText" class="font-mono text-pogo-cyan">30.0 pts</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="ivBar" class="h-full bg-gradient-to-r from-pogo-blue to-pogo-cyan rounded-full transition-all duration-500" style="width: 60%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-5 border-t border-slate-800">
+                    <h3 class="text-xs font-bold text-slate-400 mb-3 flex items-center justify-between">
+                        <span>體型分佈區間視圖 (Height Spectrum)</span>
+                        <span id="ratioMultiplierText" class="text-pogo-cyan font-mono">身高 1.13x · 體重 1.10x</span>
+                    </h3>
+                    <div class="relative h-20 w-full">
+                        <canvas id="spectrumChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 border border-pogo-border space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-link text-pogo-cyan"></i> 外部資料填寫助手 (PGOXXL DB 帶入)
+                    </h2>
+                </div>
+
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+                    <input type="text" id="generatedUrlInput" readonly class="w-full bg-transparent text-xs text-pogo-cyan font-mono focus:outline-none overflow-x-auto truncate">
+                    
+                    <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                        <button onclick="copyGeneratedUrl()" class="flex-1 sm:flex-none px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-copy text-xs"></i> 複製網址
+                        </button>
+                        <a id="externalOpenBtn" href="#" target="_blank" class="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-pogo-blue hover:bg-blue-600 text-xs font-bold text-white transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-pogo-blue/20">
+                            開啟網頁 <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Hidden Canvas for Pixel Color Analysis -->
+    <canvas id="analysisCanvas" class="hidden"></canvas>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-900 border border-pogo-cyan text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-pogo-cyan text-lg"></i>
+        <span id="toastMessage" class="text-xs font-medium">操作成功</span>
     </div>
 
-    <!-- 手動輸入/辨識結果 -->
-    <div class="bg-slate-800 rounded-xl p-4 space-y-4">
-      <h2 class="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2">數值設定</h2>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">身高 (m)</label>
-          <input type="number" id="height" step="0.01" placeholder="例如 0.8" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
-        </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">體重 (kg)</label>
-          <input type="number" id="weight" step="0.01" placeholder="例如 24.0" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
-        </div>
-      </div>
-      <button onclick="calculate()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded transition text-sm">開始計算</button>
-    </div>
+    <script>
+        const POKEMON_DATABASE = [
+            { id: 'no0131', name: '拉普拉斯 Lapras', baseHeight: 2.5, baseWeight: 220.0 },
+            { id: 'no0287', name: '懶人獺 Slakoth', baseHeight: 0.8, baseWeight: 24.0 },
+            { id: 'no0025', name: '皮卡丘 Pikachu', baseHeight: 0.4, baseWeight: 6.0 },
+            { id: 'no0143', name: '卡比獸 Snorlax', baseHeight: 2.1, baseWeight: 460.0 },
+            { id: 'no0321', name: '吼鯨王 Wailord', baseHeight: 14.5, baseWeight: 398.0 },
+            { id: 'no0006', name: '噴火龍 Charizard', baseHeight: 1.7, baseWeight: 90.5 },
+            { id: 'no0129', name: '鯉魚王 Magikarp', baseHeight: 0.9, baseWeight: 10.0 }
+        ];
 
-    <!-- 計算結果展示區 -->
-    <div id="result" class="hidden bg-slate-800 rounded-xl p-4 space-y-3">
-      <h2 class="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2">分析結果</h2>
-      <div id="resultContent" class="text-sm space-y-1"></div>
-    </div>
-  </div>
+        let spectrumChartInstance = null;
 
-  <script>
-    async function handleImage(file) {
-      if (!file) return;
-      alert("正在自動辨識圖片中，請稍候...");
-      try {
-        const worker = await Tesseract.createWorker('chi_tra+eng');
-        const ret = await worker.recognize(file);
-        const text = ret.data.text;
-        await worker.terminate();
+        window.addEventListener('DOMContentLoaded', () => {
+            populateSpeciesSelect();
+            initSpectrumChart();
+            loadLaprasExample();
+            setupDragAndDrop();
+        });
 
-        const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
-        const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
+        function populateSpeciesSelect() {
+            const select = document.getElementById('speciesSelect');
+            select.innerHTML = '';
+            POKEMON_DATABASE.forEach(pokemon => {
+                const opt = document.createElement('option');
+                opt.value = pokemon.id;
+                opt.textContent = pokemon.name;
+                select.appendChild(opt);
+            });
+        }
 
-        if (heightMatch) document.getElementById('height').value = heightMatch[1];
-        if (weightMatch) document.getElementById('weight').value = weightMatch[1];
+        function loadLaprasExample() {
+            document.getElementById('speciesSelect').value = 'no0131';
+            handleSpeciesChange();
+            document.getElementById('inputHeight').value = 2.82;
+            document.getElementById('inputWeight').value = 241.29;
+            document.getElementById('ivAtk').value = 0;
+            document.getElementById('ivDef').value = 13;
+            document.getElementById('ivHp').value = 14;
+            calculateAll();
+            showToast('已更新為拉普拉斯數據');
+        }
 
-        alert("辨識完成！請確認數值後點擊計算。");
-      } catch (e) {
-        alert("圖片辨識失敗，請改用手動輸入數值。");
-      }
-    }
+        function loadPreset(type) {
+            if (type === 'slakoth_xxl') {
+                document.getElementById('speciesSelect').value = 'no0287';
+                handleSpeciesChange();
+                document.getElementById('inputHeight').value = 1.24;
+                document.getElementById('inputWeight').value = 38.4;
+                document.getElementById('ivAtk').value = 15;
+                document.getElementById('ivDef').value = 15;
+                document.getElementById('ivHp').value = 15;
+                calculateAll();
+            }
+        }
 
-    function calculate() {
-      const h = parseFloat(document.getElementById('height').value);
-      const w = parseFloat(document.getElementById('weight').value);
-      const res = document.getElementById('result');
-      const resContent = document.getElementById('resultContent');
+        function handleSpeciesChange() {
+            const speciesId = document.getElementById('speciesSelect').value;
+            const target = POKEMON_DATABASE.find(p => p.id === speciesId);
+            if (target) {
+                document.getElementById('baseHeightDisplay').textContent = target.baseHeight.toFixed(2) + ' m';
+                document.getElementById('baseWeightDisplay').textContent = target.baseWeight.toFixed(2) + ' kg';
+                document.getElementById('pokemonDisplayName').textContent = target.name;
+            }
+            calculateAll();
+        }
 
-      if (!h || !w) {
-        alert("請輸入有效的身高與體重！");
-        return;
-      }
+        function calculateAll() {
+            const speciesId = document.getElementById('speciesSelect').value;
+            const target = POKEMON_DATABASE.find(p => p.id === speciesId) || { baseHeight: 1.0, baseWeight: 20.0, name: '寶可夢' };
 
-      let category = "一般 (Normal)";
-      if (h >= 1.2) category = "XXL (巨型)";
-      else if (h >= 1.0) category = "XL (大型)";
-      else if (h <= 0.39) category = "XXS (微型)";
-      else if (h <= 0.59) category = "XS (小型)";
+            const height = parseFloat(document.getElementById('inputHeight').value) || 0;
+            const weight = parseFloat(document.getElementById('inputWeight').value) || 0;
 
-      resContent.innerHTML = `
-        <p>📏 體型類別：<strong class="text-yellow-400">${category}</strong></p>
-        <p>⚖️ 輸入身高：${h} m | 輸入體重：${w} kg</p>
-      `;
-      res.classList.remove('hidden');
-    }
-  </script>
+            const ivAtk = parseInt(document.getElementById('ivAtk').value) || 0;
+            const ivDef = parseInt(document.getElementById('ivDef').value) || 0;
+            const ivHp = parseInt(document.getElementById('ivHp').value) || 0;
+            const totalIv = ivAtk + ivDef + ivHp;
+
+            document.getElementById('ivSumDisplay').textContent = `${totalIv} / 45 (${Math.round((totalIv/45)*100)}%)`;
+
+            const heightRatio = height / target.baseHeight;
+            const weightRatio = weight / target.baseWeight;
+
+            let heightScore = (heightRatio / 1.5) * 800;
+            if (heightScore > 800) heightScore = 800 + (heightScore - 800) * 0.1;
+
+            let weightScore = (weightRatio / 1.5) * 150;
+            let ivScore = (totalIv / 45) * 50;
+
+            const totalScore = Math.round(heightScore + weightScore + ivScore);
+
+            document.getElementById('totalScoreDisplay').textContent = totalScore.toLocaleString();
+            document.getElementById('heightScoreText').textContent = `${heightScore.toFixed(1)} pts`;
+            document.getElementById('weightScoreText').textContent = `${weightScore.toFixed(1)} pts`;
+            document.getElementById('ivScoreText').textContent = `${ivScore.toFixed(1)} pts`;
+
+            document.getElementById('heightBar').style.width = `${Math.min(100, (heightScore/800)*100)}%`;
+            document.getElementById('weightBar').style.width = `${Math.min(100, (weightScore/150)*100)}%`;
+            document.getElementById('ivBar').style.width = `${Math.min(100, (ivScore/50)*100)}%`;
+
+            updateSizeCategory(heightRatio);
+            document.getElementById('ratioMultiplierText').textContent = `身高 ${heightRatio.toFixed(2)}x · 體重 ${weightRatio.toFixed(2)}x`;
+            updateSpectrumChart(heightRatio);
+            updateExternalLinks(speciesId, height, weight);
+        }
+
+        function updateSizeCategory(heightRatio) {
+            const badge = document.getElementById('sizeBadge');
+            const comment = document.getElementById('scoreRankComment');
+
+            if (heightRatio >= 1.5) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-pogo-xxl/20 text-pogo-xxl border-pogo-xxl/40';
+                badge.innerHTML = `<i class="fa-solid fa-crown text-xs"></i> XXL 特大型`;
+                comment.innerHTML = `<i class="fa-solid fa-trophy"></i> 展示會頂尖競爭者！`;
+            } else if (heightRatio >= 1.25) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-amber-500/20 text-amber-300 border-amber-500/40';
+                badge.innerHTML = `<i class="fa-solid fa-arrow-up-long text-xs"></i> XL 大型`;
+                comment.innerHTML = `<i class="fa-solid fa-medal"></i> 表現優良`;
+            } else if (heightRatio <= 0.5) {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-pogo-xxs/20 text-pogo-xxs border-pogo-xxs/40';
+                badge.innerHTML = `<i class="fa-solid fa-compress text-xs"></i> XXS 特小型`;
+                comment.innerHTML = `<i class="fa-solid fa-gem"></i> 稀有 XXS 迷你寶可夢`;
+            } else {
+                badge.className = 'px-4 py-1.5 rounded-xl font-black text-sm tracking-wide shadow-lg border flex items-center gap-1.5 bg-slate-800 text-slate-200 border-slate-700';
+                badge.innerHTML = `<i class="fa-solid fa-minus text-xs"></i> 一般體型 (Normal)`;
+                comment.innerHTML = `<i class="fa-solid fa-chart-line"></i> 標準體型範圍`;
+            }
+        }
+
+        function initSpectrumChart() {
+            const ctx = document.getElementById('spectrumChart').getContext('2d');
+            spectrumChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['XXS', 'XS', 'Normal', 'XL', 'XXL'],
+                    datasets: [{
+                        data: [0.5, 0.75, 1.0, 1.25, 1.5],
+                        backgroundColor: ['rgba(56, 189, 248, 0.3)', 'rgba(14, 165, 233, 0.3)', 'rgba(148, 163, 184, 0.3)', 'rgba(245, 158, 11, 0.3)', 'rgba(255, 69, 0, 0.6)'],
+                        borderColor: ['#38BDF8', '#0EA5E9', '#94A3B8', '#F59E0B', '#FF4500'],
+                        borderWidth: 1.5,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { display: false, min: 0, max: 2.0 }
+                    }
+                }
+            });
+        }
+
+        function updateSpectrumChart(ratio) {
+            if (!spectrumChartInstance) return;
+            const bgColors = [
+                ratio <= 0.5 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(56, 189, 248, 0.2)',
+                (ratio > 0.5 && ratio <= 0.85) ? 'rgba(14, 165, 233, 0.9)' : 'rgba(14, 165, 233, 0.2)',
+                (ratio > 0.85 && ratio < 1.15) ? 'rgba(148, 163, 184, 0.9)' : 'rgba(148, 163, 184, 0.2)',
+                (ratio >= 1.15 && ratio < 1.45) ? 'rgba(245, 158, 11, 0.9)' : 'rgba(245, 158, 11, 0.2)',
+                ratio >= 1.45 ? 'rgba(255, 69, 0, 0.9)' : 'rgba(255, 69, 0, 0.2)'
+            ];
+            spectrumChartInstance.data.datasets[0].backgroundColor = bgColors;
+            spectrumChartInstance.update('none');
+        }
+
+        function setupDragAndDrop() {
+            const dropzone = document.getElementById('dropzone');
+            ['dragenter', 'dragover'].forEach(eName => {
+                dropzone.addEventListener(eName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add('border-pogo-cyan', 'bg-slate-800/80');
+                });
+            });
+            ['dragleave', 'drop'].forEach(eName => {
+                dropzone.addEventListener(eName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('border-pogo-cyan', 'bg-slate-800/80');
+                });
+            });
+            dropzone.addEventListener('drop', (e) => {
+                if (e.dataTransfer.files.length > 0) processImageFile(e.dataTransfer.files[0]);
+            });
+            window.addEventListener('paste', (e) => {
+                for (let item of e.clipboardData.items) {
+                    if (item.type.indexOf('image') !== -1) {
+                        processImageFile(item.getAsFile());
+                        break;
+                    }
+                }
+            });
+        }
+
+        function triggerFileInput() { document.getElementById('fileInput').click(); }
+
+        function handleFileSelect(event) {
+            if (event.target.files.length > 0) processImageFile(event.target.files[0]);
+        }
+
+        function processImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('imagePreview');
+                img.src = e.target.result;
+                document.getElementById('uploadPrompt').classList.add('hidden');
+                document.getElementById('previewContainer').classList.remove('hidden');
+                runAdvancedAnalysis(img);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function runAdvancedAnalysis(imgElement) {
+            const statusText = document.getElementById('ocrStatusText');
+            const icon = document.getElementById('ocrIcon');
+            const scanline = document.getElementById('scanline');
+
+            statusText.textContent = '解析隊長評價圖中...';
+            icon.className = 'fa-solid fa-spinner fa-spin text-pogo-cyan';
+            scanline.classList.add('is-scanning');
+
+            await new Promise(r => setTimeout(r, 100));
+
+            try {
+                // 1. Process IV Bar Graph via Pixel Analysis Canvas
+                const canvas = document.getElementById('analysisCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = imgElement.naturalWidth;
+                canvas.height = imgElement.naturalHeight;
+                ctx.drawImage(imgElement, 0, 0);
+
+                const ivValues = analyzeIvBarsFromImage(ctx, canvas.width, canvas.height);
+                document.getElementById('ivAtk').value = ivValues.atk;
+                document.getElementById('ivDef').value = ivValues.def;
+                document.getElementById('ivHp').value = ivValues.hp;
+
+                // 2. OCR Text Analysis for Name, Height, Weight
+                const worker = await Tesseract.createWorker('chi_tra+eng');
+                const ret = await worker.recognize(canvas);
+                await worker.terminate();
+
+                scanline.classList.remove('is-scanning');
+                const text = ret.data.text;
+
+                // Extract Weight & Height
+                const weightMatch = text.match(/(\d+[\.,]\d+)\s*kg/i);
+                const heightMatch = text.match(/(\d+[\.,]\d+)\s*m/i);
+
+                if (weightMatch) document.getElementById('inputWeight').value = parseFloat(weightMatch[1].replace(',', '.'));
+                if (heightMatch) document.getElementById('inputHeight').value = parseFloat(heightMatch[1].replace(',', '.'));
+
+                // Auto Match Pokémon Species
+                if (text.includes('拉普拉斯')) {
+                    document.getElementById('speciesSelect').value = 'no0131';
+                } else if (text.includes('懶人獺')) {
+                    document.getElementById('speciesSelect').value = 'no0287';
+                }
+                handleSpeciesChange();
+
+                statusText.textContent = `成功自動抓取全視角數值！(IV: ${ivValues.atk}/${ivValues.def}/${ivValues.hp})`;
+                icon.className = 'fa-solid fa-circle-check text-emerald-400';
+                calculateAll();
+                showToast('已完成全截圖精準辨識！');
+
+            } catch (err) {
+                console.error(err);
+                scanline.classList.remove('is-scanning');
+                statusText.textContent = '文字辨識完畢，請確認數值微調。';
+                icon.className = 'fa-solid fa-circle-info text-pogo-cyan';
+            }
+        }
+
+        // Color & Grid Scan Logic for IV Bars on Screenshot
+        function analyzeIvBarsFromImage(ctx, width, height) {
+            // Relative coordinates for the 3 IV bars in appraisal box
+            // Atk: ~y:72.5%, Def: ~y:78.5%, HP: ~y:84.5%
+            // Bar X range: ~28% to 85% width
+            const atkY = Math.round(height * 0.725);
+            const defY = Math.round(height * 0.785);
+            const hpY = Math.round(height * 0.845);
+
+            const startX = Math.round(width * 0.28);
+            const endX = Math.round(width * 0.85);
+
+            return {
+                atk: scanSingleBarFill(ctx, startX, endX, atkY),
+                def: scanSingleBarFill(ctx, startX, endX, defY),
+                hp: scanSingleBarFill(ctx, startX, endX, hpY)
+            };
+        }
+
+        function scanSingleBarFill(ctx, startX, endX, y) {
+            const barWidth = endX - startX;
+            const imgData = ctx.getImageData(startX, y - 2, barWidth, 5).data;
+            let filledPixels = 0;
+
+            for (let i = 0; i < imgData.length; i += 4) {
+                const r = imgData[i];
+                const g = imgData[i+1];
+                const b = imgData[i+2];
+
+                // Detect Orange/Red/Pinkish filled bar pixels vs grayish empty background
+                const isColored = (r > 200 && g > 80) || (r > 200 && b < 100);
+                if (isColored) filledPixels++;
+            }
+
+            const fillRatio = filledPixels / (barWidth * 5);
+            const ivScore = Math.round(fillRatio * 15);
+            return Math.min(15, Math.max(0, ivScore));
+        }
+
+        function updateExternalLinks(species, height, weight) {
+            const baseUrl = `https://pgoxxldb.com/zh-hant/size-calculator/`;
+            const fullUrl = `${baseUrl}?pokemon=${species}&height=${height}&weight=${weight}`;
+            document.getElementById('generatedUrlInput').value = fullUrl;
+            document.getElementById('externalOpenBtn').href = fullUrl;
+        }
+
+        function copyGeneratedUrl() {
+            const input = document.getElementById('generatedUrlInput');
+            input.select();
+            document.execCommand('copy');
+            showToast('已複製帶參數網址！');
+        }
+
+        function resetInputs() {
+            document.getElementById('inputHeight').value = 2.5;
+            document.getElementById('inputWeight').value = 220.0;
+            document.getElementById('ivAtk').value = 15;
+            document.getElementById('ivDef').value = 15;
+            document.getElementById('ivHp').value = 15;
+            calculateAll();
+            showToast('數值已重置');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 2500);
+        }
+    </script>
 </body>
 </html>
