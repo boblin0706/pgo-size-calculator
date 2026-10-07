@@ -3,76 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>辨識系統</title>
+  <title>自動辨識</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans">
   <div class="max-w-2xl mx-auto space-y-6">
     <header class="text-center py-4 border-b border-slate-700">
-      <h1 class="text-2xl font-bold text-yellow-400">辨識系統</h1>
-      <p class="text-xs text-slate-400 mt-1">支援動態錨點對齊：精準判斷 0~15 IV 與寶可夢名稱</p>
+      <h1 class="text-2xl font-bold text-yellow-400">自動辨識</h1>
+      <p class="text-xs text-slate-400 mt-1">依序辨識：名稱 ➔ 體重 ➔ 身高 ➔ 攻擊 ➔ 防禦 ➔ HP</p>
     </header>
 
-    <!-- 上傳區 -->
+    <!-- 圖片上傳區 -->
     <div class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center bg-slate-800/50 hover:border-yellow-400 transition">
       <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="processScreenshot(this.files[0])">
       <label for="imageInput" class="cursor-pointer block">
         <div class="text-4xl mb-2">📸</div>
-        <p class="text-sm font-medium text-slate-200">點擊上傳隊長評價截圖</p>
-        <p class="text-xs text-slate-400 mt-1">自動辨識：寶可夢名稱 / 體重 / 身高 / 攻擊 / 防禦 / HP</p>
+        <p class="text-sm font-medium text-slate-200">點擊上傳隊長評價頁面截圖</p>
+        <p class="text-xs text-slate-400 mt-1">自動依序擷取所有數據</p>
       </label>
     </div>
 
-    <!-- 辨識數據 -->
+    <!-- 數據輸入與結果展示 -->
     <div class="bg-slate-800 rounded-xl p-5 space-y-4 border border-slate-700">
       <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-        <h2 class="text-sm font-semibold text-slate-300">📋 辨識數據</h2>
+        <h2 class="text-sm font-semibold text-slate-300">📋 辨識數據順序</h2>
         <span id="statusText" class="text-xs text-yellow-400">請上傳截圖</span>
       </div>
 
+      <!-- 1. 名稱 -->
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">1. 寶可夢名稱</label>
+        <input type="text" id="pokeName" placeholder="例如：拉普拉斯" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
+      </div>
+
       <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2">
-          <label class="block text-xs text-slate-400 mb-1">寶可夢名稱</label>
-          <input type="text" id="pokeName" placeholder="辨識中..." class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
-        </div>
+        <!-- 2. 體重 -->
         <div>
-          <label class="block text-xs text-slate-400 mb-1">體重 (kg)</label>
+          <label class="block text-xs text-slate-400 mb-1">2. 體重 (kg)</label>
           <input type="number" id="weight" step="0.01" placeholder="例如：241.29" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
         </div>
+        <!-- 3. 身高 -->
         <div>
-          <label class="block text-xs text-slate-400 mb-1">身高 (m)</label>
+          <label class="block text-xs text-slate-400 mb-1">3. 身高 (m)</label>
           <input type="number" id="height" step="0.01" placeholder="例如：2.82" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-yellow-400">
         </div>
       </div>
 
-      <!-- IV 三格柱狀圖數值 -->
+      <!-- IV 個體值 -->
       <div class="pt-3 border-t border-slate-700">
-        <label class="block text-xs text-slate-400 mb-2">IV 個體值（每條分成 3 格，單條最高 15）</label>
+        <label class="block text-xs text-slate-400 mb-2">IV 個體值 (0 ~ 15)</label>
         <div class="grid grid-cols-3 gap-3">
+          <!-- 4. 攻擊 -->
           <div>
-            <span class="text-xs text-red-400 block mb-1">⚔️ 攻擊 (0-15)</span>
+            <span class="text-xs text-red-400 block mb-1">4. 攻擊 (0-15)</span>
             <input type="number" id="ivAtk" min="0" max="15" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center font-bold">
           </div>
+          <!-- 5. 防禦 -->
           <div>
-            <span class="text-xs text-blue-400 block mb-1">🛡️ 防禦 (0-15)</span>
+            <span class="text-xs text-blue-400 block mb-1">5. 防禦 (0-15)</span>
             <input type="number" id="ivDef" min="0" max="15" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center font-bold">
           </div>
+          <!-- 6. HP -->
           <div>
-            <span class="text-xs text-green-400 block mb-1">❤️ HP (0-15)</span>
+            <span class="text-xs text-green-400 block mb-1">6. HP (0-15)</span>
             <input type="number" id="ivHp" min="0" max="15" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white text-center font-bold">
           </div>
         </div>
       </div>
 
       <button onclick="calculateResult()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg transition text-sm shadow-md">
-        🧮 計算結果
+        🧮 計算分析結果
       </button>
     </div>
 
-    <!-- 結果展現 -->
+    <!-- 分析結果 -->
     <div id="resultBox" class="hidden bg-slate-800 rounded-xl p-5 border border-yellow-500/40 space-y-3">
-      <h2 class="text-sm font-semibold text-yellow-400 border-b border-slate-700 pb-2">📊 分析結果</h2>
+      <h2 class="text-sm font-semibold text-yellow-400 border-b border-slate-700 pb-2">📊 分析報告</h2>
       <div id="resultContent" class="text-sm space-y-2"></div>
     </div>
   </div>
@@ -84,7 +91,7 @@
       if (!file) return;
 
       const status = document.getElementById('statusText');
-      status.innerText = "⏳ 正在辨識截圖中...";
+      status.innerText = "⏳ 依序分析截圖中...";
 
       const img = new Image();
       img.src = URL.createObjectURL(file);
@@ -99,26 +106,33 @@
         try {
           const worker = await Tesseract.createWorker('chi_tra+eng');
           const ret = await worker.recognize(file);
-          const words = ret.data.words;
           const text = ret.data.text;
+          const words = ret.data.words;
           await worker.terminate();
 
-          // 1. 文字辨識：身高與體重
-          const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
-          if (weightMatch) document.getElementById('weight').value = weightMatch[1];
-
-          const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
-          if (heightMatch) document.getElementById('height').value = heightMatch[1];
-
-          // 2. 文字辨識：寶可夢名稱 (優先比對第一行或中文名字)
+          // 步驟 1：名稱 (抓取螢幕上半部主要繁體中文詞彙)
           const nameMatch = text.match(/[\u4e00-\u9fa5]{2,6}/g);
           if (nameMatch) {
-            // 過濾掉常出現的系統詞彙
-            const filtered = nameMatch.filter(w => !['攻擊', '防禦', '體重', '身高', '臺灣', '臺中市', '附近', '捕捉', '這隻'].includes(w));
-            if (filtered.length > 0) document.getElementById('pokeName').value = filtered[0];
+            const excludeWords = ['攻擊', '防禦', '體重', '身高', '臺灣', '臺中市', '附近', '捕捉', '這隻', '糖果'];
+            const validNames = nameMatch.filter(w => !excludeWords.includes(w));
+            if (validNames.length > 0) {
+              document.getElementById('pokeName').value = validNames[0];
+            }
           }
 
-          // 3. IV 動態區域檢測：根據「攻擊/防禦/HP」文字區塊定位
+          // 步驟 2：體重 (kg)
+          const weightMatch = text.match(/(\d+(\.\d+)?)\s*kg/i);
+          if (weightMatch) {
+            document.getElementById('weight').value = weightMatch[1];
+          }
+
+          // 步驟 3：身高 (m)
+          const heightMatch = text.match(/(\d+(\.\d+)?)\s*m/i);
+          if (heightMatch) {
+            document.getElementById('height').value = heightMatch[1];
+          }
+
+          // 步驟 4, 5, 6：攻擊、防禦、HP
           let atkY = null, defY = null, hpY = null;
           words.forEach(w => {
             if (w.text.includes('攻擊')) atkY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
@@ -126,53 +140,54 @@
             if (w.text.includes('HP')) hpY = w.bbox.y0 + (w.bbox.y1 - w.bbox.y0) / 2;
           });
 
-          // 若 OCR 未掃出文字位置，採用預設高相容性基準位移
+          // 若動態文字找不到，使用經典 iPhone / Android 比例備用 Y 軸
           if (!atkY) atkY = img.height * 0.748;
           if (!defY) defY = img.height * 0.803;
           if (!hpY)  hpY  = img.height * 0.858;
 
-          // 執行 IV 色彩條長度分析
           const barXStart = Math.floor(img.width * 0.22);
           const barWidth = Math.floor(img.width * 0.24);
 
+          // 步驟 4：攻擊
           document.getElementById('ivAtk').value = scanIVBar(ctx, barXStart, Math.floor(atkY), barWidth);
+          // 步驟 5：防禦
           document.getElementById('ivDef').value = scanIVBar(ctx, barXStart, Math.floor(defY), barWidth);
+          // 步驟 6：HP
           document.getElementById('ivHp').value  = scanIVBar(ctx, barXStart, Math.floor(hpY),  barWidth);
 
-          status.innerText = "✅ 辨識完成！";
+          status.innerText = "✅ 依序辨識完成！";
         } catch (e) {
-          status.innerText = "⚠️ 辨識發生錯誤，請重試或手動輸入";
+          status.innerText = "⚠️ 辨識有誤，請再試一次或手動調整";
         }
       };
     }
 
-    // 掃描條狀區域橘色填滿比例，並精確換算 0~15
+    // 掃描 IV 橘色長度換算 0-15
     function scanIVBar(ctx, startX, y, width) {
       const imgData = ctx.getImageData(startX, y - 4, width, 8).data;
       let filledX = 0;
 
       for (let x = 0; x < width; x++) {
-        let hasFillColor = false;
+        let isOrange = false;
         for (let dy = 0; dy < 8; dy++) {
           const idx = (dy * width + x) * 4;
           const r = imgData[idx];
           const g = imgData[idx + 1];
           const b = imgData[idx + 2];
 
-          // 判定 Pokémon GO 條狀圖專屬的橙色/紅橙色
-          if (r > 210 && g > 90 && g < 180 && b < 100) {
-            hasFillColor = true;
+          // 橙色光譜
+          if (r > 200 && g > 80 && g < 180 && b < 100) {
+            isOrange = true;
             break;
           }
         }
-        if (hasFillColor) filledX = x + 1;
+        if (isOrange) filledX = x + 1;
       }
 
       const ratio = filledX / width;
       if (ratio < 0.05) return 0;
       if (ratio > 0.95) return 15;
 
-      // 每 1/3 區段為 5 點
       return Math.round(ratio * 15);
     }
 
@@ -188,9 +203,13 @@
       const ivPercent = ((totalIv / 45) * 100).toFixed(1);
 
       document.getElementById('resultContent').innerHTML = `
-        <p class="text-base font-bold text-white">名稱：<span class="text-yellow-400">${name}</span></p>
-        <p>📏 身高：${h} m | ⚖️ 體重：${w} kg</p>
-        <p>⚔️ IV 數值：<strong>${atk} / ${def} / ${hp}</strong> (總計 ${totalIv}/45, 完美度 ${ivPercent}%)</p>
+        <p class="text-base font-bold text-white">1. 名稱：<span class="text-yellow-400">${name}</span></p>
+        <p>2. 體重：${w} kg</p>
+        <p>3. 身高：${h} m</p>
+        <p>4. 攻擊：<strong>${atk}</strong> / 15</p>
+        <p>5. 防禦：<strong>${def}</strong> / 15</p>
+        <p>6. HP：<strong>${hp}</strong> / 15</p>
+        <p class="pt-2 text-yellow-400 font-bold">🌟 總 IV：${totalIv} / 45 (${ivPercent}%)</p>
       `;
 
       document.getElementById('resultBox').classList.remove('hidden');
